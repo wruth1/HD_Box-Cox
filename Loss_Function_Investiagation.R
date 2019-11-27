@@ -63,13 +63,13 @@ BC = function(Y, gamma){
 n = 100
 p = 10
 sigma = 1
-gamma.0 = 2
+gamma.0 = 1
 
 #Smallest and largest gamma candidates
 gamma.min = -2
 gamma.max = 4
 #Step size for gamma candidates
-gamma.step = 0.01
+gamma.step = 0.05
 
 
 X = matrix(rnorm(n*p, 10, 10), nrow = n, ncol = p)
@@ -109,16 +109,18 @@ test = boxcox(fit, lambda = seq(-2, 4, 1/10))
 
 
 
+### Model log(lambda) ~ BC par. using linear regression
+### Plot results
 fit.1se = lm(log(all.lambdas[1,]) ~ Gammas)
 summary(fit.1se)
 plot(fit.1se, which=1)
-plot(Gammas, log(all.lambdas[1,]))
+plot(Gammas, log(all.lambdas[1,]), type="l", lwd=2)
 abline(fit.1se)
 
 fit.min = lm(log(all.lambdas[2,]) ~ Gammas)
 summary(fit.min)
 plot(fit.min, which=1)
-plot(Gammas, log(all.lambdas[2,]))
+plot(Gammas, log(all.lambdas[2,]), type="l", lwd=2)
 abline(fit.min)
 
 
@@ -131,15 +133,15 @@ all.lambdas.trim = all.lambdas[,-ind.drop]
 fit.1se.trim = lm(log(all.lambdas.trim[1,]) ~ Gammas.trim)
 summary(fit.1se.trim)
 plot(fit.1se.trim, which=1)
-plot(Gammas.trim, log(all.lambdas.trim[1,]))
+plot(Gammas.trim, log(all.lambdas.trim[1,]), type="l", lwd=2)
 abline(fit.1se.trim)
-plot(Gammas, log(all.lambdas[1,]))
+plot(Gammas, log(all.lambdas[1,]), type="l", lwd=2)
 abline(fit.1se.trim)
 
 fit.min.trim = lm(log(all.lambdas.trim[2,]) ~ Gammas.trim)
 summary(fit.min.trim)
 plot(fit.min.trim, which=1)
-plot(Gammas.trim, log(all.lambdas.trim[2,]))
-abline(fit.min.trim)
-plot(Gammas, log(all.lambdas[2,]))
+plot(Gammas.trim, log(all.lambdas.trim[2,]), type="l", lwd=2)
+abline(fit.min.trim, col="red")
+plot(Gammas, log(all.lambdas[2,]), type="l", lwd=2)
 abline(fit.min.trim)
