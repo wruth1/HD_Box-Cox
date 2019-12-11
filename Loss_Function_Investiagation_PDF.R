@@ -52,10 +52,10 @@ for(j in seq_len(M)){
     } else{
       fit.cv = cv.glmnet(X, Y.new, foldid = folds)
     }
-    all.lambdas <<- cbind(all.lambdas, c(fit.cv$lambda.1se,
-                                         fit.cv$lambda.min))
+    all.lambdas <<- cbind(all.lambdas, c(fit.cv$lambda.min,
+                                         fit.cv$lambda.1se))
     Y.hat.min = predict(fit.cv, X, s = "lambda.min")
-    Y.hat.1se = predict(fit.cv, X, s = "lambda.min")
+    Y.hat.1se = predict(fit.cv, X, s = "lambda.1se")
     resid.min = Y.new - Y.hat.min
     resid.1se = Y.new - Y.hat.1se
     sse.min = sum((resid.min)^2)

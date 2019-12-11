@@ -1,0 +1,64 @@
+profile.lik = function(gamma, X, Y) {
+  n = length(Y)
+  Y.new = BC(Y, gamma)
+  fit = lm(Y.new ~ X)
+  sse = sum((fit$residuals) ^ 2)
+  lik = -n * log(sse) / 2
+  Jacob = (gamma - 1) * sum(log(Y))
+  lik = lik + Jacob
+  return(lik)
+}
+
+profile.lik.lasso = function(gamma, X, Y) {
+  n = length(Y)
+  Y.new = BC(Y, gamma)
+  fit.cv = cv.glmnet(X, Y.new)
+  Y.hat.min = predict(fit.cv, X, s = "lambda.min")
+  Y.hat.1se = predict(fit.cv, X, s = "lambda.1se")
+  resid.min = Y.new - Y.hat.min
+  resid.1se = Y.new - Y.hat.1se
+  sse.min = sum((resid.min) ^ 2)
+  sse.1se = sum((resid.1se) ^ 2)
+  lik.min = -n * log(sse.min) / 2
+  lik.1se = -n * log(sse.1se) / 2
+  Jacob = (gamma - 1) * sum(log(Y))
+  lik.min = lik.min + Jacob
+  lik.1se = lik.1se + Jacob
+  this.liks = c(lik.min, lik.1se)
+  this.lambdas = c(fit.cv$lambda.min, fit.cv$lambda.1se)
+  this.vars = list(predict(fit.cv, X, s="lambda.min", type="nonzero"),
+                   predict(fit.cv, X, s="lambda.1se", type="nonzero"))
+  output = list(this.liks, this.lambdas, this.vars)
+  return(output)
+}
+
+increment.counts = function(counts, inds.list){
+  inds = unlist(inds.list)
+  counts[inds] = counts[inds] + 1
+  return(counts)
+}
+
+#Returns a vector that the BC transform (with par. gamma) maps to Y
+#Note: Does not account for negative values
+inv.BC = function(Y, gamma) {
+  if (gamma == 0) {
+    return(exp(Y))
+  } else{
+    Z = 1 + gamma * Y
+    Z = Z ^ (1 / gamma)
+    return(Z)
+  }
+}
+
+#Returns the BC transformation of Y with par. gamma
+#Note: Does not account for negative values
+BC = function(Y, gamma) {
+  if (gamma == 0) {
+    return(log(Y))
+  } else{
+    Z = Y ^ gamma
+    Z = (Z - 1) / gamma
+    return(Z)
+  }
+}
+
