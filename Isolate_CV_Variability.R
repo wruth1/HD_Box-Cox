@@ -82,26 +82,52 @@ pr.lik.sd = apply(pr.lik.collection, c(1, 3), function(W) {
   return(sd(W) / sqrt(length(W)))
 })
 
+#########################################################
+### Process and plot variable selection probabilities ###
+#########################################################
 
+### Format probabilities for tidyverse
 var.probs = all.vars/M
 vars.tidy = melt(var.probs)
 colnames(vars.tidy) = c("Type", "Gamma", "Variable", "Prob")
 vars.tidy$Type = c("Min", "1SE")[vars.tidy$Type]
 vars.tidy$Gamma = Gammas[vars.tidy$Gamma]
 
+### Split probs by LASSO flavor
 vars.min = vars.tidy %>% filter(Type == "Min")
 vars.1se = vars.tidy %>% filter(Type == "1SE")
   
+### Plot LASSO min probabilities
 select.plot.min = ggplot(data= vars.min, aes(x=Gamma, y = Variable)) +
   geom_tile(aes(fill = Prob), colour = "white") + 
-  scale_fill_gradient(low = "white", high = "steelblue") + 
+  scale_fill_gradient(low = "white", high = "blue") + 
   geom_hline(yintercept = q, size=2) + 
-  geom_vline(xintercept = gamma.0)
+  geom_vline(xintercept = gamma.0) +
+  ggtitle("Variable Selection Probabilities Under LASSO Min")
 plot(select.plot.min)
 
+### Plot LASSO 1SE Probs
 select.plot.1se = ggplot(data= vars.1se, aes(x=Gamma, y = Variable)) +
   geom_tile(aes(fill = Prob), colour = "white") + 
-  scale_fill_gradient(low = "white", high = "steelblue")+ 
+  scale_fill_gradient(low = "white", high = "blue")+ 
   geom_hline(yintercept = q, size=2) + 
-  geom_vline(xintercept = gamma.0)
+  geom_vline(xintercept = gamma.0) +
+  ggtitle("Variable Selection Probabilities Under LASSO 1SE")
 plot(select.plot.1se)
+
+
+##############################################
+### Process and plot "profile likelihoods" ###
+##############################################
+
+### Format "likelihoods" for tidyverse
+liks.tidy = melt(pr.lik.collection)
+colnames(liks.tidy) = c("Type", "Iteration", "Gamma", "Likelihood")
+liks.tidy$Type = c("Min", "1SE")[liks.tidy$Type]
+liks.tidy$Gamma = Gammas[liks.tidy$Gamma]
+
+### Separate "likelihoods" by LASSO flavor. Keep only 1st iteration
+###   Want to plot a single iteration. Mean of all iter's would
+###   under-represent variability. 1se is chosen arbitrarily
+liks.min = liks.tidy %>% filter(Type == "Min", Iteration == 1)
+liks.1se = liks.tidy %>% filter(Type == "1SE", Iteration == 1)
