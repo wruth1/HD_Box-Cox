@@ -2,23 +2,27 @@ profile.lik = function(gamma, X, Y) {
   n = length(Y)
   Y.new = BC(Y, gamma)
   fit = lm(Y.new ~ X)
-  sse = sum((fit$residuals) ^ 2)
-  lik = -n * log(sse) / 2
+  mse = sum((fit$residuals) ^ 2)/n
+  lik = -n * log(mse) / 2
   Jacob = (gamma - 1) * sum(log(Y))
   lik = lik + Jacob
   return(lik)
 }
 
-profile.lik.lasso = function(gamma, X, Y) {
+profile.lik.lasso = function(gamma, X, Y, folds=NULL) {
   n = length(Y)
   Y.new = BC(Y, gamma)
-  fit.cv = cv.glmnet(X, Y.new)
+  if(is.null(folds)){
+    fit.cv = cv.glmnet(X, Y.new)
+  } else{
+    fit.cv = cv.glmnet(X, Y.new, foldid = folds)
+  }
   Y.hat.min = predict(fit.cv, X, s = "lambda.min")
   Y.hat.1se = predict(fit.cv, X, s = "lambda.1se")
   resid.min = Y.new - Y.hat.min
   resid.1se = Y.new - Y.hat.1se
-  sse.min = sum((resid.min) ^ 2)
-  sse.1se = sum((resid.1se) ^ 2)
+  sse.min = sum((resid.min) ^ 2)/n
+  sse.1se = sum((resid.1se) ^ 2)/n
   lik.min = -n * log(sse.min) / 2
   lik.1se = -n * log(sse.1se) / 2
   Jacob = (gamma - 1) * sum(log(Y))

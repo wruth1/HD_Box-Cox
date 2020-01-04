@@ -113,7 +113,7 @@ vars.tidy$Gamma = Gammas[vars.tidy$Gamma]
 ### Split probs by LASSO flavor
 vars.min = vars.tidy %>% filter(Type == "Min")
 vars.1se = vars.tidy %>% filter(Type == "1SE")
-  
+
 ### Plot LASSO min probabilities
 select.plot.min = ggplot(data= vars.min, aes(x=Gamma, y = Variable)) +
   geom_tile(aes(fill = Prob), colour = "white") + 
@@ -156,8 +156,8 @@ lik.plot.min = ggplot(data = liks.min, aes(x=Gamma, y=Likelihood))+
         axis.text.x = element_blank()) +
   ylab("\"Log-Likelihood\"") +
   ggtitle(paste0("\"Log-Profile-Likelihood\" and ",
-  "Variable Selection Probabilities Under LASSO Min \n",
-  "(thick: observed, thin: oracle LS)"))
+                 "Variable Selection Probabilities Under LASSO Min \n",
+                 "(thick: observed, thin: oracle LS)"))
 #plot(lik.plot.min)
 
 ggarrange(lik.plot.min, select.plot.min, heights = c(0.25, 0.75))
