@@ -9,6 +9,16 @@ profile.lik = function(gamma, X, Y) {
   return(lik)
 }
 
+### Compute `profile likelihood' at gamma based on LASSO
+get.profile.lik = function(gamma, X, Y, fit, lambda){
+  Y.hat = predict(fit, X, s = lambda)
+  MSE = mean((Y - Y.hat)^2)
+  lik = -n * log(MSE)/2
+  Jacob = (gamma - 1)*sum(log(Y))
+  lik = lik + Jacob
+  return(lik)
+}
+
 profile.lik.lasso = function(gamma, X, Y, folds=NULL) {
   n = length(Y)
   Y.new = BC(Y, gamma)
