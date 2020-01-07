@@ -4,14 +4,15 @@ library(pbapply)
 library(tidyverse)
 library(reshape2)
 library(egg)
+library(doParallel)
+
 
 time = Sys.time()
 
-set.seed(92794619)
+set.seed(74799272)
 
 source("LASSO_Likelihood_Helper_Functions.R")
 
-M = 20 #Number of times to replicate simulation
 K = 10 #Number of CV folds
 
 n = 100
@@ -24,11 +25,11 @@ gamma.0 = 1
 gamma.min = 0
 gamma.max = 2
 #Step size for gamma candidates
-gamma.step = 0.1
+gamma.step = 0.25
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
-n.lambda.raw = 1000
+n.lambda.raw = 50
 
 
 
@@ -56,16 +57,38 @@ len.L = length(all.lambdas)
 all.errs = array(0, dim = c(K, len.L))
 
 all.gamma.hats = array(0, dim = c(K, len.L))
+dimnames(all.gamma.hats) = list(fold = c(), lambda.ind=c())
 
-for (i in seq_len(K)) {
+
+
+# #Initialize parallelization
+# nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
+# nclust = ifelse(is.na(nclust), detectCores(), nclust)
+# cl = makeCluster(nclust)
+# registerDoParallel(cl)
+# 
+# #Pass info to cluster
+# clusterExport(cl, c("X", "folds", "Z", "all.lambdas",
+#                     "len.G", "Gammas", "n"))
+# clusterEvalQ(cl, {
+#   library(glmnet)
+# 
+#   source("LASSO_Likelihood_Helper_Functions.R")
+# })
+
+
+sim.output = pblapply(seq_len(K), function(i){
   X.train = X[folds != i,]
   Z.train = Z[folds != i]
   X.test = X[folds == i,]
   Z.test = Z[folds == i]
   
+  all.gamma.hats = rep(0, times = len.L)
+  all.errs = rep(0, times = len.L)
+  
   for (j in seq_along(all.lambdas)) {
-    print(paste0(i, ":", j, " of ",
-                 K, ":", len.L))
+    # print(paste0(i, ":", j, " of ",
+    #              K, ":", len.L))
     this.lambda = all.lambdas[j]
     
     this.likelihoods = rep(0, times = len.G)
@@ -88,16 +111,70 @@ for (i in seq_len(K)) {
     
     ind.gamma = which.min(this.likelihoods)
     gamma.hat = Gammas[ind.gamma]
-    all.gamma.hats[i,j] = gamma.hat
+    all.gamma.hats[j] = gamma.hat
     
     Y.train = BC(Z.train, gamma.hat)
     fit.cv = glmnet(X.train, Y.train)
     Y.hat = predict(fit.cv, X.test, s = this.lambda)
     Z.hat = inv.BC(Y.hat, gamma.hat)
     this.err = mean((Z.hat - Z.test)^2)
-    all.errs[i,j] = this.err
+    all.errs[j] = this.err
   }
-}
+  
+  output = list(gammas = all.gamma.hats, errs = all.errs)
+  return(output)
+})
+
+
+
+#Terminate parallelization
+# stopCluster(cl)
+
+
+
+# for (i in seq_len(K)) {
+#   X.train = X[folds != i,]
+#   Z.train = Z[folds != i]
+#   X.test = X[folds == i,]
+#   Z.test = Z[folds == i]
+#   
+#   for (j in seq_along(all.lambdas)) {
+#     print(paste0(i, ":", j, " of ",
+#                 K, ":", len.L))
+#     this.lambda = all.lambdas[j]
+#     
+#     this.likelihoods = rep(0, times = len.G)
+#     
+#     for (k in seq_along(Gammas)) {
+#       this.gamma = Gammas[k]
+#       Y.train = BC(Z.train, this.gamma) #Y.test is not used
+#       
+#       fit.cv = glmnet(X.train, Y.train)
+#       
+#       ### To Do ###
+#       #Choose gamma within the loop
+#       #Only get predictions for the 'best' gamma
+#       
+#       
+#       this.lik = get.profile.lik(this.gamma, X.train, Y.train,
+#                                  fit.cv, this.lambda)
+#       this.likelihoods[k] = this.lik
+#     }
+#     
+#     ind.gamma = which.min(this.likelihoods)
+#     gamma.hat = Gammas[ind.gamma]
+#     all.gamma.hats[i,j] = gamma.hat
+#     
+#     Y.train = BC(Z.train, gamma.hat)
+#     fit.cv = glmnet(X.train, Y.train)
+#     Y.hat = predict(fit.cv, X.test, s = this.lambda)
+#     Z.hat = inv.BC(Y.hat, gamma.hat)
+#     this.err = mean((Z.hat - Z.test)^2)
+#     all.errs[i,j] = this.err
+#   }
+# }
+
+
 
 #Get average CV errors and their SEs
 errs.mean = apply(all.errs, c(2), mean)
@@ -120,5 +197,20 @@ plot.errs = ggplot(data.errs, aes(x = lambda)) +
   geom_line(aes(y = err), size = 1.5) +
   geom_line(aes(y = upper), colour = "red")
 plot(plot.errs)
+
+
+#Prepare gamma estimates for plotting and construct plot
+mean.gamma = apply(all.gamma.hats, 2, mean)
+se.gamma = apply(all.gamma.hats, 2, sd)/sqrt(K)
+data.gamma = data.frame(lambda = all.lambdas,
+                        gamma = mean.gamma,
+                        upper = mean.gamma + se.gamma,
+                        lower = mean.gamma - se.gamma)
+plot.gamma = ggplot(data.gamma, aes(x = lambda)) +
+  geom_line(aes(y = gamma)) +
+  geom_line(aes(y = upper), colour = "red") +
+  geom_line(aes(y = lower), colour = "red")
+  
+plot(plot.gamma)
 
 print(Sys.time() - time)
