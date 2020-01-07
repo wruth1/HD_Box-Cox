@@ -131,51 +131,6 @@ sim.output = pblapply(seq_len(K), function(i){
 # stopCluster(cl)
 
 
-
-# for (i in seq_len(K)) {
-#   X.train = X[folds != i,]
-#   Z.train = Z[folds != i]
-#   X.test = X[folds == i,]
-#   Z.test = Z[folds == i]
-#   
-#   for (j in seq_along(all.lambdas)) {
-#     print(paste0(i, ":", j, " of ",
-#                 K, ":", len.L))
-#     this.lambda = all.lambdas[j]
-#     
-#     this.likelihoods = rep(0, times = len.G)
-#     
-#     for (k in seq_along(Gammas)) {
-#       this.gamma = Gammas[k]
-#       Y.train = BC(Z.train, this.gamma) #Y.test is not used
-#       
-#       fit.cv = glmnet(X.train, Y.train)
-#       
-#       ### To Do ###
-#       #Choose gamma within the loop
-#       #Only get predictions for the 'best' gamma
-#       
-#       
-#       this.lik = get.profile.lik(this.gamma, X.train, Y.train,
-#                                  fit.cv, this.lambda)
-#       this.likelihoods[k] = this.lik
-#     }
-#     
-#     ind.gamma = which.min(this.likelihoods)
-#     gamma.hat = Gammas[ind.gamma]
-#     all.gamma.hats[i,j] = gamma.hat
-#     
-#     Y.train = BC(Z.train, gamma.hat)
-#     fit.cv = glmnet(X.train, Y.train)
-#     Y.hat = predict(fit.cv, X.test, s = this.lambda)
-#     Z.hat = inv.BC(Y.hat, gamma.hat)
-#     this.err = mean((Z.hat - Z.test)^2)
-#     all.errs[i,j] = this.err
-#   }
-# }
-
-
-
 #Get average CV errors and their SEs
 errs.mean = apply(all.errs, c(2), mean)
 errs.se = apply(all.errs, c(2), sd) / sqrt(K)
