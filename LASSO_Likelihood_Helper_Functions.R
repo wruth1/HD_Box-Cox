@@ -2,7 +2,7 @@ profile.lik = function(gamma, X, Y) {
   n = length(Y)
   Y.new = BC(Y, gamma)
   fit = lm(Y.new ~ X)
-  mse = sum((fit$residuals) ^ 2)/n
+  mse = sum((fit$residuals) ^ 2) / n
   lik = -n * log(mse) / 2
   Jacob = (gamma - 1) * sum(log(Y))
   lik = lik + Jacob
@@ -10,19 +10,20 @@ profile.lik = function(gamma, X, Y) {
 }
 
 ### Compute `profile likelihood' at gamma based on LASSO
-get.profile.lik = function(gamma, X, Y, fit, lambda){
+get.profile.lik = function(gamma, X, Y, fit, lambda) {
   Y.hat = predict(fit, X, s = lambda)
-  MSE = mean((Y - Y.hat)^2)
-  lik = -n * log(MSE)/2
-  Jacob = (gamma - 1)*sum(log(Y))
+  MSE = mean((Y - Y.hat) ^ 2)
+  lik = -n * log(MSE) / 2
+  Y.obs = inv.BC(Y, gamma)
+  Jacob = (gamma - 1) * sum(log(Y.obs))
   lik = lik + Jacob
   return(lik)
 }
 
-profile.lik.lasso = function(gamma, X, Y, folds=NULL) {
+profile.lik.lasso = function(gamma, X, Y, folds = NULL) {
   n = length(Y)
   Y.new = BC(Y, gamma)
-  if(is.null(folds)){
+  if (is.null(folds)) {
     fit.cv = cv.glmnet(X, Y.new)
   } else{
     fit.cv = cv.glmnet(X, Y.new, foldid = folds)
@@ -31,8 +32,8 @@ profile.lik.lasso = function(gamma, X, Y, folds=NULL) {
   Y.hat.1se = predict(fit.cv, X, s = "lambda.1se")
   resid.min = Y.new - Y.hat.min
   resid.1se = Y.new - Y.hat.1se
-  sse.min = sum((resid.min) ^ 2)/n
-  sse.1se = sum((resid.1se) ^ 2)/n
+  sse.min = sum((resid.min) ^ 2) / n
+  sse.1se = sum((resid.1se) ^ 2) / n
   lik.min = -n * log(sse.min) / 2
   lik.1se = -n * log(sse.1se) / 2
   Jacob = (gamma - 1) * sum(log(Y))
@@ -40,13 +41,15 @@ profile.lik.lasso = function(gamma, X, Y, folds=NULL) {
   lik.1se = lik.1se + Jacob
   this.liks = c(lik.min, lik.1se)
   this.lambdas = c(fit.cv$lambda.min, fit.cv$lambda.1se)
-  this.vars = list(predict(fit.cv, X, s="lambda.min", type="nonzero"),
-                   predict(fit.cv, X, s="lambda.1se", type="nonzero"))
+  this.vars = list(
+    predict(fit.cv, X, s = "lambda.min", type = "nonzero"),
+    predict(fit.cv, X, s = "lambda.1se", type = "nonzero")
+  )
   output = list(this.liks, this.lambdas, this.vars)
   return(output)
 }
 
-increment.counts = function(counts, inds.list){
+increment.counts = function(counts, inds.list) {
   inds = unlist(inds.list)
   counts[inds] = counts[inds] + 1
   return(counts)
@@ -54,25 +57,43 @@ increment.counts = function(counts, inds.list){
 
 #Returns a vector that the BC transform (with par. gamma) maps to Y
 #Note: Does not account for negative values
-inv.BC = function(Y, gamma) {
-  if (gamma == 0) {
-    return(exp(Y))
-  } else{
-    Z = 1 + gamma * Y
-    Z = Z ^ (1 / gamma)
-    return(Z)
+inv.BC = function(Y, gamma, type = "good") {
+  if (type == "good") {
+    if (gamma == 0) {
+      return(exp(Y))
+    } else{
+      Z = 1 + gamma * Y
+      Z = Z ^ (1 / gamma)
+      return(Z)
+    }
+  } else if (type == "simple") {
+    if (gamma == 0) {
+      return(exp(Y))
+    } else{
+      Z = Y ^ (1 / gamma)
+      return(Z)
+    }
   }
 }
 
 #Returns the BC transformation of Y with par. gamma
 #Note: Does not account for negative values
-BC = function(Y, gamma) {
-  if (gamma == 0) {
-    return(log(Y))
-  } else{
-    Z = Y ^ gamma
-    Z = (Z - 1) / gamma
-    return(Z)
+BC = function(Y, gamma, type = "good") {
+  if (type == "good") {
+    if (gamma == 0) {
+      return(log(Y))
+    } else{
+      Z = Y ^ gamma
+      Z = (Z - 1) / gamma
+      return(Z)
+    }
+  } else if (type == "simple") {
+    if (gamma == 0) {
+      return(log(Y))
+    } else{
+      Z = Y ^ gamma
+      return(Z)
+    }
   }
 }
 

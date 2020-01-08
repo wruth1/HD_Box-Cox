@@ -25,11 +25,11 @@ gamma.0 = 1
 gamma.min = 0
 gamma.max = 2
 #Step size for gamma candidates
-gamma.step = 0.25
+gamma.step = 0.1
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
-n.lambda.raw = 50
+n.lambda.raw = 1000
 
 
 
@@ -50,34 +50,26 @@ folds = fit.cv.glmnet$foldid
 all.lambdas = fit.cv.glmnet$lambda
 len.L = length(all.lambdas)
 
-### Store all CV Errors
-### Dimensions are:
-### Fold number
-### lambda
-all.errs = array(0, dim = c(K, len.L))
 
-all.gamma.hats = array(0, dim = c(K, len.L))
-dimnames(all.gamma.hats) = list(fold = c(), lambda.ind=c())
+#Initialize parallelization
+nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
+nclust = ifelse(is.na(nclust), detectCores(), nclust)
+cl = makeCluster(nclust)
+registerDoParallel(cl)
 
+#Pass info to cluster
+clusterExport(cl, c("X", "folds", "Z", "all.lambdas",
+                    "len.G", "len.L", "Gammas", "n"))
+clusterEvalQ(cl, {
+  library(glmnet)
 
-
-# #Initialize parallelization
-# nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
-# nclust = ifelse(is.na(nclust), detectCores(), nclust)
-# cl = makeCluster(nclust)
-# registerDoParallel(cl)
-# 
-# #Pass info to cluster
-# clusterExport(cl, c("X", "folds", "Z", "all.lambdas",
-#                     "len.G", "Gammas", "n"))
-# clusterEvalQ(cl, {
-#   library(glmnet)
-# 
-#   source("LASSO_Likelihood_Helper_Functions.R")
-# })
+  source("LASSO_Likelihood_Helper_Functions.R")
+})
 
 
 sim.output = pblapply(seq_len(K), function(i){
+  set.seed(30795084 + 1000*i)
+  
   X.train = X[folds != i,]
   Z.train = Z[folds != i]
   X.test = X[folds == i,]
@@ -123,17 +115,27 @@ sim.output = pblapply(seq_len(K), function(i){
   
   output = list(gammas = all.gamma.hats, errs = all.errs)
   return(output)
-})
-
+}, cl=cl)
 
 
 #Terminate parallelization
-# stopCluster(cl)
+stopCluster(cl)
+
+### Dimensions are:
+### Fold number
+### lambda
+sim.errs = array(0, dim = c(K, len.L))
+sim.gammas = array(0, dim = c(K, len.L))
+for(i in 1:K){
+  this.sim = sim.output[[i]]
+  sim.errs[i,] = this.sim$errs
+  sim.gammas[i,] = this.sim$gammas
+}
 
 
 #Get average CV errors and their SEs
-errs.mean = apply(all.errs, c(2), mean)
-errs.se = apply(all.errs, c(2), sd) / sqrt(K)
+errs.mean = apply(sim.errs, c(2), mean)
+errs.se = apply(sim.errs, c(2), sd) / sqrt(K)
 
 #Get lambda min and lambda 1se
 ind.min = which.min(errs.mean)
@@ -155,8 +157,8 @@ plot(plot.errs)
 
 
 #Prepare gamma estimates for plotting and construct plot
-mean.gamma = apply(all.gamma.hats, 2, mean)
-se.gamma = apply(all.gamma.hats, 2, sd)/sqrt(K)
+mean.gamma = apply(sim.gammas, 2, mean)
+se.gamma = apply(sim.gammas, 2, sd)/sqrt(K)
 data.gamma = data.frame(lambda = all.lambdas,
                         gamma = mean.gamma,
                         upper = mean.gamma + se.gamma,
@@ -164,7 +166,8 @@ data.gamma = data.frame(lambda = all.lambdas,
 plot.gamma = ggplot(data.gamma, aes(x = lambda)) +
   geom_line(aes(y = gamma)) +
   geom_line(aes(y = upper), colour = "red") +
-  geom_line(aes(y = lower), colour = "red")
+  geom_line(aes(y = lower), colour = "red") +
+  ggtitle("Estimates of Gamma. Averaged Across CV Iterations.")
   
 plot(plot.gamma)
 
