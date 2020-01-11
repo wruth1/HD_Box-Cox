@@ -9,14 +9,19 @@ profile.lik = function(gamma, X, Y) {
   return(lik)
 }
 
+profile.lik.formula = function(Y.obs, Y.BC, Y.BC.hat, gamma){
+  MSE = mean((Y.BC - Y.BC.hat)^2)
+  lik = -n * log(MSE) /2
+  Jacob = (gamma -1) * sum(log(Y.obs))
+  lik = lik + Jacob
+  return(lik)
+}
+
 ### Compute `profile likelihood' at gamma based on LASSO
 get.profile.lik = function(gamma, X, Y, fit, lambda) {
   Y.hat = predict(fit, X, s = lambda)
-  MSE = mean((Y - Y.hat) ^ 2)
-  lik = -n * log(MSE) / 2
   Y.obs = inv.BC(Y, gamma)
-  Jacob = (gamma - 1) * sum(log(Y.obs))
-  lik = lik + Jacob
+  lik = profile.lik.formula(Y.obs, Y, Y.hat, gamma)
   return(lik)
 }
 
