@@ -15,7 +15,7 @@ library(glmpath)
 
 time = Sys.time()
 
-set.seed(12345)
+set.seed(74380493)
 
 source("LASSO_Likelihood_Helper_Functions.R")
 
@@ -23,16 +23,16 @@ source("LASSO_Likelihood_Helper_Functions.R")
 n = 100
 p = 100
 q = 10
-sigma = 3
-gamma.0 = 1
+sigma = 1
+gamma.0 = 2
 beta = c(rep(1, times = q), rep(0, times = p - q))
 
 
 #Smallest and largest gamma candidates
-gamma.min = 0
-gamma.max = 2
+gamma.min = gamma.0 - 1
+gamma.max = gamma.0 + 1
 #Step size for gamma candidates
-gamma.step = 0.05
+gamma.step = 0.01
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
@@ -61,7 +61,7 @@ info.lambda.min = pbsapply(seq_along(Gammas), function(j){
 
 
   path = glmpath(X, Z, family = "gaussian", max.norm = 10000*ncol(X),
-                 min.lambda = 0)
+                 min.lambda = 0, lambda2=0)
   lambda.seq = path$lambda
   ind.lambda.min = which(diff(lambda.min > lambda.seq) != 0)
   int.lambda.min = lambda.seq[c(ind.lambda.min, ind.lambda.min + 1)]
@@ -88,7 +88,7 @@ plot.lambda.min = ggplot(data=ranges.lambda.min, aes(x = gamma)) +
   geom_line(aes(y = lower), colour = "red") +
   geom_line(aes(y = upper), colour = "red") +
   geom_vline(xintercept = gamma.0, colour = "blue") +
-  ylab("log(lambda)") + ggtitle(paste0("lambda-1se - ", sigma))
+  ylab("log(lambda)") + ggtitle("lambda-min")
 plot(plot.lambda.min)
 
 ranges.lambda.min = mutate(ranges.lambda.min,
@@ -96,7 +96,7 @@ ranges.lambda.min = mutate(ranges.lambda.min,
 
 plot.diff.min = ggplot(data = ranges.lambda.min, aes(x = gamma)) +
   geom_line(aes(y = diff)) + ggtitle("lambda - min") +
-  ylab("Length of Optimizer's Interval (log-scale)") +
+  ylab("Length of Interval (log-scale)") +
   geom_vline(xintercept = gamma.0, colour = "blue")
 plot(plot.diff.min)
 
@@ -134,7 +134,7 @@ plot.lambda.1se = ggplot(data=ranges.lambda.1se, aes(x = gamma)) +
   geom_line(aes(y = lower), colour = "red") +
   geom_line(aes(y = upper), colour = "red") +
   geom_vline(xintercept = gamma.0, colour = "blue") +
-  ylab("log(lambda)") + ggtitle(paste0("lambda-1se - ", sigma))
+  ylab("log(lambda)") + ggtitle("lambda-1se")
 plot(plot.lambda.1se)
 
 ranges.lambda.1se = mutate(ranges.lambda.1se,
@@ -142,6 +142,6 @@ ranges.lambda.1se = mutate(ranges.lambda.1se,
 
 plot.diff.1se = ggplot(data = ranges.lambda.1se, aes(x = gamma)) +
   geom_line(aes(y = diff)) + ggtitle("lambda - 1se") +
-  ylab("Length of Optimizer's Interval (log-scale)") +
+  ylab("Length of Interval (log-scale)") +
   geom_vline(xintercept = gamma.0, colour = "blue")
 plot(plot.diff.1se)

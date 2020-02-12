@@ -1,14 +1,16 @@
-##############################################################
-### Examine profile likelihood for gamma at various lambda ###
-##############################################################
+######################################################################
+### Compute the BC parameter estimator from Klaassen et al. (2017) ###
+######################################################################
 
 library(ggplot2)
 library(glmnet)
-library(MASS)
 
 source("LASSO_Likelihood_Helper_Functions.R")
 
-set.seed(74799272)
+set.seed(74380493)
+
+
+
 
 time = Sys.time()
 
@@ -39,11 +41,9 @@ Y = mu.Y + rnorm(n, 0, sigma)
 
 Z = inv.BC(Y, gamma.0)
 
-fit.raw = cv.glmnet(X, Z)
+fit.raw = glmnet(X, Z)
 all.lambdas = fit.raw$lambda
 len.L = length(all.lambdas)
-lambda.0 = fit.raw$lambda.1se
-ind.lambda.0 = which(all.lambdas == lambda.0)
 
 all.gamma.hats = rep(0, times = length(all.lambdas))
 all.liks = array(0, dim = c(len.L, len.G))
@@ -77,9 +77,8 @@ single.curve = ggplot(mapping = aes(y = all.liks[1, ],
   geom_line() + ggtitle("A Single Profile Likelihood")
 plot(single.curve)
 
-# mean.liks = apply(all.liks, 2, mean)
-mean.liks = all.liks[ind.lambda.0,]
-se.liks = apply(all.liks, 2, sd)# / sqrt(len.L)
+mean.liks = apply(all.liks, 2, mean)
+se.liks = apply(all.liks, 2, sd) / sqrt(len.L)
 
 data.liks = data.frame(
   gamma = Gammas,
@@ -93,8 +92,7 @@ data.liks = data.frame(
 plot.liks = ggplot(data.liks, aes(x = gamma)) +
   geom_line(aes(y = mean)) + geom_vline(xintercept = gamma.0) +
   geom_line(aes(y = upper), colour = "red") +
-  geom_line(aes(y = lower), colour = "red") +
-  ylab("Log Profile Likelihood")
+  geom_line(aes(y = lower), colour = "red")
 plot(plot.liks)
 
 
@@ -131,7 +129,7 @@ ls.gamma.hat = Gammas[ind.gamma]
 
 plot.liks.ls = ggplot(mapping = aes(x = Gammas, y = ls.liks)) +
   geom_line() + geom_vline(xintercept = gamma.0) +
-  #ggtitle("Profile log-likelihood for LS") +
+  ggtitle("Profile log-likelihood for LS") +
   ylab("Log Profile Likelihood")
 plot(plot.liks.ls)
 

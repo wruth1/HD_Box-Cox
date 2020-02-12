@@ -1,5 +1,5 @@
 ###############################################################
-### Find the neighbourhood of ganna values around the truth ###
+### Find the neighbourhood of gamma values around the truth ###
 ###    within which the fitted active set doesn't change    ###
 ###       Note: we are doing test-set tuning, not CV        ###
 ###############################################################
@@ -20,18 +20,18 @@ source("LASSO_Likelihood_Helper_Functions.R")
 
 
 n = 100 
-p = 200
+p = 40
 q = 10
-sigma = 3
-gamma.0 = 0.5
+sigma = 1
+gamma.0 = 2
 beta = c(rep(1, times = q), rep(0, times = p - q))
 
 
 #Smallest and largest gamma candidates
-gamma.min = 0.499
-gamma.max = 0.501
+gamma.min = gamma.0 - 3
+gamma.max = gamma.0 + 3
 #Step size for gamma candidates
-gamma.step = 0.00001
+gamma.step = 0.01
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
@@ -48,6 +48,7 @@ Y = inv.BC(Y.lin, gamma.0)
 fit.cv = cv.glmnet(X, Y)
 lambda.1se = fit.cv$lambda.1se
 active.cv = predict(fit.cv, s=lambda.1se, type="nonzero")
+active.true = 1:q
 
 matching = pbsapply(seq_along(Gammas), function(i){
   this.gamma = Gammas[i]
