@@ -10,6 +10,7 @@ profile.lik = function(gamma, X, Y) {
 }
 
 profile.lik.formula = function(Y.obs, Y.BC, Y.BC.hat, gamma){
+  n = length(Y.obs)
   MSE = mean((Y.BC - Y.BC.hat)^2)
   lik = -n * log(MSE) /2
   Jacob = (gamma -1) * sum(log(Y.obs))
