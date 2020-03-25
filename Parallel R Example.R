@@ -7,6 +7,8 @@ nclust = ifelse(is.na(nclust), detectCores(), nclust)
 cl = makeCluster(nclust)
 registerDoParallel(cl)
 
+clusterSetRNGStream(cl=cl, iseed = 123456)
+
 #Pass info to cluster
 clusterExport(cl, c("n"))
 clusterEvalQ(cl, {

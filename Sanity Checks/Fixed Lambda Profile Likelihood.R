@@ -9,7 +9,7 @@ library(glmpath)
 
 time = Sys.time()
 
-set.seed(32249631)
+set.seed(97843163)
 
 source("LASSO_Likelihood_Helper_Functions.R")
 
@@ -25,15 +25,16 @@ beta.size = (1+q)/2 #Size of each non-zero coefficient
 
 #Smallest and largest gamma candidates
 gamma.min = 1
-gamma.max = 3
+gamma.max = 5
 #Step size for gamma candidates
 gamma.step = 0.01
 #Candidate gamma values
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
-n.lambda.raw = 100
-
+#This is about the middle of the range of lambda.1se's that give
+#the correct active set under usual parameter settings
+lambda.0 = 4*sigma*sqrt(log(p)/n)
 
 
 ### Generate data
@@ -46,27 +47,16 @@ Y.lin = mu.Y + rnorm(n, 0, sigma)
 ### Transform Y so that gamma.0 is correct BC parameter
 Z = inv.BC(Y.lin, gamma.0)
 
-### Find lambda values to use for all datasets
-### Note: lambda is chosen as a proportion of max(beta.hat.ls)
-# X.std = scale(X)
-X.std = X
+
+X.std = scale(X)
+# X.std = X
 
 
-loss.LASSO = function(Y, Y.hat, b, lambda){
-  L2 = sum((Y - Y.hat)^2)/(2*length(Y))
-  L1 = lambda * sum(abs(b))
-  return(L2 + L1)
-}
-
-lambda.type = "lambda.1se"
 
 sim.output = pblapply(Gammas, function(this.gamma){
   this.Z = BC(Z, this.gamma)
-  this.fit = cv.glmnet(X.std, this.Z)
-  this.Z.hat = predict(this.fit, X.std, s=lambda.type)
-  # this.data = data.frame(this.Z, X.std)
-  # this.fit = lm(this.Z ~ ., data=this.data)
-  # this.Z.hat = predict(this.fit, this.data)
+  this.fit = glmnet(X.std, this.Z)
+  this.Z.hat = predict(this.fit, X.std, s=lambda.0)
   
   #Error on the transformed data scale
   err.BC = mean((this.Z - this.Z.hat)^2)
@@ -77,12 +67,12 @@ sim.output = pblapply(Gammas, function(this.gamma){
   
   #Profile likelihood
   prof.lik = profile.lik.formula(Z, this.Z, this.Z.hat, this.gamma)
-
+  
   #Jacobian
   Jacob = (this.gamma - 1) * sum(log(Z))
   
   #Active set
-  A.hat = predict(this.fit, s=lambda.type, type = "nonzero")
+  A.hat = predict(this.fit, s=lambda.0, type = "nonzero")
   
   #Return all computations
   this.err = data.frame(transformed = err.BC,
@@ -99,7 +89,7 @@ sim.output = pblapply(Gammas, function(this.gamma){
 all.losses.raw = sapply(seq_along(sim.output), function(i){
   return(sim.output[[i]][[1]])
 })
-all.A.hats = lapply(sim.output, function(out){
+all.A.hats.raw = lapply(sim.output, function(out){
   return(out[[2]])
 })
 
@@ -121,7 +111,7 @@ plot(plot.trans)
 plot.obs = ggplot(data = results, aes(x = Gammas, y = observed)) +
   geom_point() + xlab("Gamma") + ylab("MSE") +
   ggtitle(paste0("MSE Computed on the Observed Data Scale", ". ",
-          "I.e. After inverting the BC-Transformation")) +
+                 "I.e. After inverting the BC-Transformation")) +
   geom_vline(xintercept = gamma.0)
 plot(plot.obs)
 
@@ -151,40 +141,24 @@ plot(plot.decomp)
 ### Investigate active sets ###
 ###############################
 
-all.lengths = sapply(all.A.hats, nrow)
-print(all.lengths)
-
-# all.same = sapply(all.A.hats, function(q){
-#   all(q == w)
-# })
-# all(all.lengths)
+all.A.hats = lapply(all.A.hats.raw, paste)
+A.hats.factor = factor(unlist(all.A.hats))
 
 plot.lik = ggplot(data = results,
-                  aes(x = Gammas, y = lik)) +
+                  aes(x = Gammas, y = lik, colour = A.hats.factor)) +
   geom_point() + xlab("Gamma") + ylab("Profile Likelihood") +
   # ggtitle(paste0("MSE Computed on the Observed Data Scale", ". ",
   #                "I.e. After inverting the BC-Transformation")) +
-  geom_vline(xintercept = gamma.0) 
+  geom_vline(xintercept = gamma.0) +
+  theme(legend.position = "none")
 plot(plot.lik)
 
+### Add lambda values
+all.lambdas = all.losses[,lambda.type]
+lambdas.plot = log(all.lambdas) + 5.3
+lambdas.plot = lambdas.plot * 29/13.7
+lambdas.plot = lambdas.plot + 368
 
-##############################################
-### Investigate banding in likelihood plot ###
-##############################################
-data.clust = select(results, gamma, lik)
-dist.clust = dist(data.clust)
-clust = hclust(dist.clust, method = "single")
-
-
-m = 1  #Minimim number of clusters to plot
-M = 10 #Maximum number of clusters to plot
-all.groupings = cutree(clust, k = m:M)
-for(j in rev(seq_len(M - m + 1))){
-  this.groups = factor(all.groupings[,j])
-  this.plot = ggplot(data = results,
-                     aes(x = gamma, y = lik, 
-                         colour = !!this.groups)) +
-    geom_point()
-  plot(this.plot)
-}
-
+plot.lik.lambda = plot.lik + geom_line(aes(y = lambdas.plot)) +
+  scale_y_continuous(sec.axis = sec_axis(~.*(29/13.7)+(5.3*29/13.7 + 368), name = "log(lambda.1se)"))
+plot(plot.lik.lambda)
