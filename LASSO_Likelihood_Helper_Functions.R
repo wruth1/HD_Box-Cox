@@ -1,3 +1,18 @@
+geom_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+
+#Extracts the specified variable from simulation output
+get.from.sim = function(sim.output, var.name){
+  vals.raw = lapply(sim.output, function(G){
+    values = G[[1]]
+    this.val = values[var.name]
+    return(this.val)
+  })
+  vals = unlist(vals.raw)
+}
+
+
 profile.lik = function(gamma, X, Y) {
   n = length(Y)
   Y.new = BC(Y, gamma)
