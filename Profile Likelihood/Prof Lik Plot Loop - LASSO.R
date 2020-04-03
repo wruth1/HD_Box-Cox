@@ -110,6 +110,9 @@ foreach(j = seq_len(nrow(all.pars))) %do% {
   plot.title.full = paste0("Profile Likelihood for CV Lasso with ",
                            plot.title)
   
+  save.image(paste0("Profile Likelihood/Workspaces/LASSO/",
+                    plot.title, ".RData"))
+  
   #Make plots
   cat("B")
   source("Profile Likelihood/Plot One CV Lambda.R")

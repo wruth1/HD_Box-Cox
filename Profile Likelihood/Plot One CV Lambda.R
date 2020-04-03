@@ -14,6 +14,28 @@ lambda.plot = ggplot(data.lambda, aes(x=gamma, y = lambda)) +
 # plot(lambda.plot)
 
 
+
+### Plot log(lambda.hat)
+cat(0)
+lambda.plot = ggplot(data.lambda, 
+                         aes(x=gamma, y = lambda)) +
+  xlab("Gamma") + ylab("CV Lambda") +
+  ggtitle(plot.title) + 
+  geom_vline(xintercept = gamma.0) +
+  geom_point()
+
+jpeg(paste0("Plots/CV lambda/lambda/JPEG/",
+            plot.title, ".jpeg"))
+plot(lambda.plot)
+dev.off()
+
+png(paste0("Plots/CV lambda/lambda/PNG/",
+           plot.title, ".png"))
+plot(lambda.plot)
+dev.off()
+
+
+
 ### Plot log(lambda.hat)
 cat(1)
 log.lambda.plot = ggplot(data.lambda, 
