@@ -10,7 +10,7 @@ all.A.hats.raw = lapply(sim.output, function(out){
 ####################################
 ### Investigate different losses ###
 ####################################
-cat(1)
+# cat(1)
 
 all.losses.list = data.frame(t(all.losses.raw))
 all.losses = apply(all.losses.list, 2, unlist)
@@ -65,7 +65,7 @@ dev.off()
 ###############################
 ### Investigate active sets ###
 ###############################
-cat(2)
+# cat(2)
 
 all.A.hats = lapply(all.A.hats.raw, paste)
 A.hats.factor = factor(unlist(all.A.hats))

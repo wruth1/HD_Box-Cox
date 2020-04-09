@@ -7,25 +7,7 @@ all.lambdas.raw = lapply(Gammas, function(this.gamma) {
 
 all.lambdas = sort(unlist(all.lambdas.raw))
 
-
-#Initialize parallelization
-nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
-nclust = ifelse(is.na(nclust), detectCores(), nclust)
-nclust = 5
-cl = makeCluster(nclust)
-registerDoParallel(cl)
-
-clusterSetRNGStream(cl=cl, iseed = 57857221)
-
-#Pass info to cluster
-clusterExport(cl, c("Z", "X.std", "all.lambdas", "lambda.type",
-                    "n.folds", "folds"))
-clusterEvalQ(cl, {
-  library(glmnet)
-  source("LASSO_Likelihood_Helper_Functions.R")
-})
-
-sim.output = parLapply(cl=cl, Gammas, function(this.gamma){
+sim.output = lapply(Gammas, function(this.gamma){
   this.Z = BC(Z, this.gamma)
   sd.Z = sd(this.Z)
   this.fit = cv.glmnet(X.std, this.Z, lambda = all.lambdas,
@@ -66,6 +48,3 @@ sim.output = parLapply(cl=cl, Gammas, function(this.gamma){
   output = list(this.err, A.hat)
   return(output)
 })
-
-#Terminate parallelization
-stopCluster(cl)

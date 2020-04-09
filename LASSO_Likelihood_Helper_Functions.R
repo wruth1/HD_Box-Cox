@@ -1,10 +1,10 @@
-geom_mean = function(x, na.rm=TRUE){
-  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+geom_mean = function(x, na.rm = TRUE) {
+  exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
 }
 
 #Extracts the specified variable from simulation output
-get.from.sim = function(sim.output, var.name){
-  vals.raw = lapply(sim.output, function(G){
+get.from.sim = function(sim.output, var.name) {
+  vals.raw = lapply(sim.output, function(G) {
     values = G[[1]]
     this.val = values[var.name]
     return(this.val)
@@ -12,6 +12,21 @@ get.from.sim = function(sim.output, var.name){
   vals = unlist(vals.raw)
 }
 
+### Construct a coefficient vector with the specified size
+### Size can refer to the size of the non-zero terms (type=="val")
+### of the 2-norm of beta (type == "norm")
+make.beta = function(p, q, size = 0, type = "val") {
+  if (type == "val") {
+    b = rep(size, times = q)
+    b = c(b, rep(0, times = p - q))
+  } else if (type == "norm"){
+    val = size/sqrt(q)
+    b = rep(val, times = q)
+    b = c(b, rep(0, times = p - q))
+  } else{
+    stop("In make.beta (Invalid type specified)")
+  }
+}
 
 profile.lik = function(gamma, X, Y) {
   n = length(Y)
@@ -24,11 +39,11 @@ profile.lik = function(gamma, X, Y) {
   return(lik)
 }
 
-profile.lik.formula = function(Y.obs, Y.BC, Y.BC.hat, gamma){
+profile.lik.formula = function(Y.obs, Y.BC, Y.BC.hat, gamma) {
   n = length(Y.obs)
-  MSE = mean((Y.BC - Y.BC.hat)^2)
-  lik = -n * log(MSE) /2
-  Jacob = (gamma -1) * sum(log(Y.obs))
+  MSE = mean((Y.BC - Y.BC.hat) ^ 2)
+  lik = -n * log(MSE) / 2
+  Jacob = (gamma - 1) * sum(log(Y.obs))
   lik = lik + Jacob
   return(lik)
 }
@@ -45,13 +60,13 @@ get.profile.lik = function(gamma, X, Y, fit, lambda) {
 ### fits a lasso model and gets the profile likelihood at the
 ### specified lambda(s)
 ### Output: an unnamed vector of the same length as lambda
-profile.lik.lasso = function(gamma, X, Y.obs, lambda){
+profile.lik.lasso = function(gamma, X, Y.obs, lambda) {
   Y.BC = BC(Y.obs, gamma)
   fit = glmnet(X, Y.BC)
   Y.BC.hat = predict(fit, X, s = lambda)
   
-  profile.likelihoods = sapply(seq_along(lambda), function(i){
-    this.Y.hat = Y.BC.hat[,i]
+  profile.likelihoods = sapply(seq_along(lambda), function(i) {
+    this.Y.hat = Y.BC.hat[, i]
     this.lik = profile.lik.formula(Y.obs, Y.BC, this.Y.hat, gamma)
     return(this.lik)
   })
@@ -63,11 +78,11 @@ profile.lik.lasso = function(gamma, X, Y.obs, lambda){
 ### Computes the BC transformation of Y.obs with the specified gamma,
 ### fits a LS model and gets the profile likelihood
 ### Output: a number
-profile.lik.ls = function(gamma, X, Y.obs){
+profile.lik.ls = function(gamma, X, Y.obs) {
   Y.BC = BC(Y.obs, gamma)
   
   data = data.frame(X, Y.BC)
-  fit = lm(Y.BC ~ X, data=data)
+  fit = lm(Y.BC ~ X, data = data)
   Y.BC.hat = predict(fit, data.frame(X))
   
   profile.lik = profile.lik.formula(Y.obs, Y.BC, Y.BC.hat, gamma)
@@ -151,4 +166,3 @@ BC = function(Y, gamma, type = "good") {
     }
   }
 }
-

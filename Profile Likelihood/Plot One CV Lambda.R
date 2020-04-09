@@ -16,7 +16,7 @@ lambda.plot = ggplot(data.lambda, aes(x=gamma, y = lambda)) +
 
 
 ### Plot log(lambda.hat)
-cat(0)
+#cat(0)
 lambda.plot = ggplot(data.lambda, 
                          aes(x=gamma, y = lambda)) +
   xlab("Gamma") + ylab("CV Lambda") +
@@ -37,7 +37,7 @@ dev.off()
 
 
 ### Plot log(lambda.hat)
-cat(1)
+#cat(1)
 log.lambda.plot = ggplot(data.lambda, 
                          aes(x=gamma, y = log.lambda)) +
   xlab("Gamma") + ylab("log(CV Lambda)") +
@@ -57,7 +57,7 @@ dev.off()
 
 
 ### Plot lambda/SE(Y)
-cat(2)
+#cat(2)
 lambda.over.sd = ggplot(data.lambda, 
                         aes(x=gamma, y = lambda/sd)) +
   xlab("Gamma") + ylab("CV Lambda / SE(Y)") +
@@ -79,7 +79,7 @@ dev.off()
 
 
 ### Plot log(lambda)/SE(Y)
-cat(3)
+#cat(3)
 log.lambda.over.sd = ggplot(data.lambda, 
                         aes(x=gamma, y = log.lambda/sd)) +
   xlab("Gamma") + ylab("log(CV Lambda) / SE(Y)") +
@@ -101,7 +101,7 @@ dev.off()
 
 
 ### Plot lambda/geom_mean(Y)
-cat(4)
+#cat(4)
 lambda.over.gm = ggplot(data.lambda, 
                             aes(x=gamma, y = lambda/gm)) +
   xlab("Gamma") + ylab("CV Lambda / geom_mean(Y)") +
@@ -123,7 +123,7 @@ dev.off()
 
 
 ### Plot log(lambda)/geom_mean(Y)
-cat(5)
+#cat(5)
 log.lambda.over.gm = ggplot(data.lambda, 
                         aes(x=gamma, y = log.lambda/gm)) +
   xlab("Gamma") + ylab("log-Lambda / geom_mean(Y)") +
@@ -145,7 +145,7 @@ dev.off()
 
 
 ### Plot log(lambda)/log(geom_mean(Y))
-cat(6)
+#cat(6)
 log.lambda.over.log.gm = ggplot(data.lambda, 
                             aes(x=gamma, y = log.lambda/log.gm)) +
   xlab("Gamma") + ylab("log-Lambda / log-geom_mean(Y)") +
@@ -167,7 +167,7 @@ dev.off()
 
 
 ### Plot log(lambda) - log(geom_mean(Y))
-cat(7)
+#cat(7)
 log.lambda.minus.log.gm = ggplot(data.lambda, 
                                 aes(x=gamma, y = log.lambda-log.gm)) +
   xlab("Gamma") + ylab("log-Lambda - log-geom_mean(Y)") +
