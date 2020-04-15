@@ -21,7 +21,8 @@ sigma = 0.1   #Residual SD
 gamma.0 = 4 #Correct value for Box-Cox transformation
 # beta.size = (1 + q) / 2 #Size of each non-zero coefficient
 beta.size = 20
-beta = make.beta(p, q, beta.size, type = "norm")
+beta.type = "norm"
+beta = make.beta(p, q, beta.size, type = beta.type)
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
 step.sizes = 2*(1:12)
@@ -136,7 +137,8 @@ print(cover.probs)
 
 
 pars = c(n = n, p = p, q = q, sigma = sigma,
-         gamma.0 = gamma.0, beta.str = "norm = 20",
+         gamma.0 = gamma.0, 
+         beta.str = paste0(beta.type, " = ", beta.size),
          M = M, gamma.step = gamma.step)
 results.raw = c(pars, signif(cover.probs, digits = 3))
 results = data.frame(t(results.raw))
