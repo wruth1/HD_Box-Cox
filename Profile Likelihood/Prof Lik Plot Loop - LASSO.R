@@ -59,7 +59,7 @@ all.pars = expand.grid(
 
 
 
-foreach(j = seq_len(nrow(all.pars))) %do% {
+foreach(j = 10:(nrow(all.pars))) %do% {
   set.seed(32249631)
   
 # foreach(j = c(1, 24)) %do% {
