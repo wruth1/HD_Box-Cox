@@ -166,3 +166,52 @@ BC = function(Y, gamma, type = "good") {
     }
   }
 }
+
+# Computes a value with two-sided tail prob. less than p.star
+# for Y. See general notes in Overleaf
+get.int = function(n, delta, sigma, tail.prob = 0.01){
+  v = delta^2 + sigma^2
+  a = sqrt(2 * v * log(2*n))
+  b = sqrt(-2 * v * log(tail.prob))
+  return(a + b)
+}
+
+### Generates M (X, Y) pairs with the specified parameters
+### Optionally also returns the specified parameter settings
+### Note: X is a matrix of iid standard normals
+### Note: delta is the SD of an entry in X %*% beta
+### Note: tail.prob upper bounds P(Y < 0)
+make.data = function(n, p, q, delta, sigma, tail.prob = 0.01,
+                     M = 1, return.pars = F){
+  all.data = lapply(seq_len(M), function(j){
+    X = matrix(rnorm(n * p), nrow = n, ncol = p)
+    # Size of each non-zero element of beta
+    beta.term = delta / sqrt(q)
+    beta = c(rep(beta.term, times = q),
+             rep(0, times = p - q))
+    intercept = get.int(n, delta, sigma, tail.prob)
+    Y.mean = X %*% beta + intercept
+    epsilon = rnorm(n, sd = sigma)
+    Y = Y.mean + epsilon
+    data = list(X = X, Y = Y)
+    return(data)
+  })
+  if(!return.pars){
+    return(all.data)
+  } else{
+    pars = list(n=n, p=p, q=q, delta=delta, sigma=sigma)
+    output = list(data=all.data, pars = pars)
+    return(output)
+  }
+}
+
+
+
+
+
+
+
+
+
+
+

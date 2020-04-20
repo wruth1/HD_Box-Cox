@@ -34,14 +34,14 @@ n.folds = 10
 sigmas = c(0.1, 0.01)
 gamma.0s = c(2, 3, 4)
 ps = c(10, 50)#, 200)
-beta.types = c("norm", "val")
+deltas = c(1, 10) #SD of a term in X %*% beta
 
 #Construct list of parameter combinations
 all.pars = expand.grid(
   p = ps,
   sigma = sigmas,
   gamma.0 = gamma.0s,
-  beta.type = beta.types
+  delta = deltas
 )
 
 
@@ -92,8 +92,7 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
 
   ### Construct coefficient vector
   q = floor(sqrt(p))
-  beta = make.beta(p, q, beta.size, type = beta.type)
-  
+
   
   #Run simulation
   source("LASSO CIs/Make One LS CI.R",

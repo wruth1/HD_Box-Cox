@@ -13,6 +13,7 @@ set.seed(10782897)
 
 # source("LASSO_Likelihood_Helper_Functions.R")
 
+all.data = make.data(n, p, q, delta, sigma, M)
 
 all.intervals = lapply(seq_len(M), function(i) {
   ### Generate data
