@@ -15,15 +15,15 @@ set.seed(10782897)
 
 all.data = make.data(n, p, q, delta, sigma, M)
 
-all.intervals = lapply(seq_len(M), function(i) {
+all.intervals = pblapply(seq_len(M), function(i) {
   ### Generate data
   X = matrix(rnorm(n * p, 0, 1), nrow = n, ncol = p)
-  mu.Y.raw = X %*% beta
-  mu.Y = mu.Y.raw + 10 * abs(min(mu.Y.raw))
-  Y.lin = mu.Y + rnorm(n, 0, sigma)
+  mu.Z.raw = X %*% beta
+  mu.Z = mu.Z.raw + 10 * abs(min(mu.Z.raw))
+  Z = mu.Z + rnorm(n, 0, sigma)
   
   ### Transform Y so that gamma.0 is correct BC parameter
-  Z = inv.BC(Y.lin, gamma.0)
+  Y = inv.BC(Z, gamma.0)
   
   ### Find lambda values to use for all datasets
   ### Note: lambda is chosen as a proportion of max(beta.hat.ls)
@@ -85,16 +85,16 @@ info = paste0(signif(cover.probs, digits = 3),
 names(info) = paste0("Minus ", step.sizes)
 
 
-pars = c(n = n, p = p, q = q, sigma = sigma,
-         gamma.0 = gamma.0, 
-         beta.str = paste0(beta.type, " = ", beta.size),
-         M = M, gamma.step = gamma.step)
-results.raw = c(pars, info)
-results = data.frame(t(results.raw))
+# pars = c(n = n, p = p, q = q, sigma = sigma,
+#          gamma.0 = gamma.0, 
+#          beta.str = paste0(beta.type, " = ", beta.size),
+#          M = M, gamma.step = gamma.step)
+# results.raw = c(pars, info)
+# results = data.frame(t(results.raw))
 
-write.table(results, "LASSO CIs/Coverages - LS.csv", append = T,
-            row.names = F, quote = F, sep = ",",
-            col.names = F)
+# write.table(results, "LASSO CIs/Coverages - LS.csv", append = T,
+#             row.names = F, quote = F, sep = ",",
+#             col.names = F)
 
 # print(Sys.time() - time)
 

@@ -1,3 +1,5 @@
+source("Helper Functions/Profile Likelihood Helper Functions.R")
+
 geom_mean = function(x, na.rm = TRUE) {
   exp(sum(log(x[x > 0]), na.rm = na.rm) / length(x))
 }
@@ -19,8 +21,8 @@ make.beta = function(p, q, size = 0, type = "val") {
   if (type == "val") {
     b = rep(size, times = q)
     b = c(b, rep(0, times = p - q))
-  } else if (type == "norm"){
-    val = size/sqrt(q)
+  } else if (type == "norm") {
+    val = size / sqrt(q)
     b = rep(val, times = q)
     b = c(b, rep(0, times = p - q))
   } else{
@@ -28,120 +30,27 @@ make.beta = function(p, q, size = 0, type = "val") {
   }
 }
 
-profile.lik = function(gamma, X, Y) {
-  n = length(Y)
-  Y.new = BC(Y, gamma)
-  fit = lm(Y.new ~ X)
-  mse = sum((fit$residuals) ^ 2) / n
-  lik = -n * log(mse) / 2
-  Jacob = (gamma - 1) * sum(log(Y))
-  lik = lik + Jacob
-  return(lik)
-}
-
-profile.lik.formula = function(Y.obs, Y.BC, Y.BC.hat, gamma) {
-  n = length(Y.obs)
-  MSE = mean((Y.BC - Y.BC.hat) ^ 2)
-  lik = -n * log(MSE) / 2
-  Jacob = (gamma - 1) * sum(log(Y.obs))
-  lik = lik + Jacob
-  return(lik)
-}
-
-### Compute `profile likelihood' at gamma based on LASSO
-get.profile.lik = function(gamma, X, Y, fit, lambda) {
-  Y.hat = predict(fit, X, s = lambda)
-  Y.obs = inv.BC(Y, gamma)
-  lik = profile.lik.formula(Y.obs, Y, Y.hat, gamma)
-  return(lik)
-}
-
-### Computes the BC transformation of Y.obs with the specified gamma,
-### fits a lasso model and gets the profile likelihood at the
-### specified lambda(s)
-### Output: an unnamed vector of the same length as lambda
-profile.lik.lasso = function(gamma, X, Y.obs, lambda) {
-  Y.BC = BC(Y.obs, gamma)
-  fit = glmnet(X, Y.BC)
-  Y.BC.hat = predict(fit, X, s = lambda)
-  
-  profile.likelihoods = sapply(seq_along(lambda), function(i) {
-    this.Y.hat = Y.BC.hat[, i]
-    this.lik = profile.lik.formula(Y.obs, Y.BC, this.Y.hat, gamma)
-    return(this.lik)
-  })
-  
-  return(profile.likelihoods)
-}
 
 
-### Computes the BC transformation of Y.obs with the specified gamma,
-### fits a LS model and gets the profile likelihood
-### Output: a number
-profile.lik.ls = function(gamma, X, Y.obs) {
-  Y.BC = BC(Y.obs, gamma)
-  
-  data = data.frame(X, Y.BC)
-  fit = lm(Y.BC ~ X, data = data)
-  Y.BC.hat = predict(fit, data.frame(X))
-  
-  profile.lik = profile.lik.formula(Y.obs, Y.BC, Y.BC.hat, gamma)
-  return(profile.lik)
-}
 
-### Old version
-# profile.lik.lasso = function(gamma, X, Y, folds = NULL) {
-#   n = length(Y)
-#   Y.new = BC(Y, gamma)
-#   if (is.null(folds)) {
-#     fit.cv = cv.glmnet(X, Y.new)
-#   } else{
-#     fit.cv = cv.glmnet(X, Y.new, foldid = folds)
-#   }
-#   Y.hat.min = predict(fit.cv, X, s = "lambda.min")
-#   Y.hat.1se = predict(fit.cv, X, s = "lambda.1se")
-#   resid.min = Y.new - Y.hat.min
-#   resid.1se = Y.new - Y.hat.1se
-#   sse.min = sum((resid.min) ^ 2) / n
-#   sse.1se = sum((resid.1se) ^ 2) / n
-#   lik.min = -n * log(sse.min) / 2
-#   lik.1se = -n * log(sse.1se) / 2
-#   Jacob = (gamma - 1) * sum(log(Y))
-#   lik.min = lik.min + Jacob
-#   lik.1se = lik.1se + Jacob
-#   this.liks = c(lik.min, lik.1se)
-#   this.lambdas = c(fit.cv$lambda.min, fit.cv$lambda.1se)
-#   this.vars = list(
-#     predict(fit.cv, X, s = "lambda.min", type = "nonzero"),
-#     predict(fit.cv, X, s = "lambda.1se", type = "nonzero")
-#   )
-#   output = list(this.liks, this.lambdas, this.vars)
-#   return(output)
-# }
-
-increment.counts = function(counts, inds.list) {
-  inds = unlist(inds.list)
-  counts[inds] = counts[inds] + 1
-  return(counts)
-}
 
 #Returns a vector that the BC transform (with par. gamma) maps to Y
 #Note: Does not account for negative values
-inv.BC = function(Y, gamma, type = "good") {
+inv.BC = function(Z, gamma, type = "good") {
   if (type == "good") {
     if (gamma == 0) {
-      return(exp(Y))
+      return(exp(Z))
     } else{
-      Z = 1 + gamma * Y
-      Z = Z ^ (1 / gamma)
-      return(Z)
+      Y = 1 + gamma * Z
+      Y = Y ^ (1 / gamma)
+      return(Y)
     }
   } else if (type == "simple") {
     if (gamma == 0) {
-      return(exp(Y))
+      return(exp(Z))
     } else{
-      Z = Y ^ (1 / gamma)
-      return(Z)
+      Y = Z ^ (1 / gamma)
+      return(Y)
     }
   }
 }
@@ -167,11 +76,11 @@ BC = function(Y, gamma, type = "good") {
   }
 }
 
-# Computes a value with two-sided tail prob. less than p.star
-# for Y. See general notes in Overleaf
-get.int = function(n, delta, sigma, tail.prob = 0.01){
-  v = delta^2 + sigma^2
-  a = sqrt(2 * v * log(2*n))
+# Computes a value with two-sided tail prob for Y
+# less than tail.prob. See general notes in Overleaf
+get.int = function(n, delta, sigma, tail.prob = 0.01) {
+  v = delta ^ 2 + sigma ^ 2
+  a = sqrt(2 * v * log(2 * n))
   b = sqrt(-2 * v * log(tail.prob))
   return(a + b)
 }
@@ -181,37 +90,54 @@ get.int = function(n, delta, sigma, tail.prob = 0.01){
 ### Note: X is a matrix of iid standard normals
 ### Note: delta is the SD of an entry in X %*% beta
 ### Note: tail.prob upper bounds P(Y < 0)
-make.data = function(n, p, q, delta, sigma, tail.prob = 0.01,
-                     M = 1, return.pars = F){
-  all.data = lapply(seq_len(M), function(j){
+make.data = function(n,
+                     p,
+                     q,
+                     delta,
+                     sigma,
+                     M = 1,
+                     tail.prob = 0.01,
+                     return.pars = F) {
+  all.data = lapply(seq_len(M), function(j) {
     X = matrix(rnorm(n * p), nrow = n, ncol = p)
     # Size of each non-zero element of beta
     beta.term = delta / sqrt(q)
     beta = c(rep(beta.term, times = q),
              rep(0, times = p - q))
     intercept = get.int(n, delta, sigma, tail.prob)
-    Y.mean = X %*% beta + intercept
+    Z.mean = X %*% beta + intercept
     epsilon = rnorm(n, sd = sigma)
-    Y = Y.mean + epsilon
-    data = list(X = X, Y = Y)
+    Z = Z.mean + epsilon
+    data = list(X = X, Z = Z)
     return(data)
   })
-  if(!return.pars){
+  if (!return.pars) {
     return(all.data)
   } else{
-    pars = list(n=n, p=p, q=q, delta=delta, sigma=sigma)
-    output = list(data=all.data, pars = pars)
+    pars = list(
+      n = n,
+      p = p,
+      q = q,
+      delta = delta,
+      sigma = sigma
+    )
+    output = list(data = all.data, pars = pars)
     return(output)
   }
 }
 
-
-
-
-
-
-
-
+### Computes the gradient of the BC transformation wrt gamma
+grad.BC.gamma = function(Y, gamma) {
+  if (gamma == 0) {
+    c = log(Y)
+    return(c ^ 2 / 2)
+  } else{
+    a = Y ^ gamma * log(Y)
+    b = BC(Y, gamma, type = "good")
+    output = (a - b) / gamma
+    return(output)
+  }
+}
 
 
 
