@@ -92,6 +92,7 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
 
   ### Construct coefficient vector
   q = floor(sqrt(p))
+  
 
   
   #Run simulation

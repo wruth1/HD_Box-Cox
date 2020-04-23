@@ -140,4 +140,19 @@ grad.BC.gamma = function(Y, gamma) {
 }
 
 
-
+### Creates a new grid based on X by adding all the midpoints
+finer.grid = function(X){
+  n = length(X)
+  m = 2*n - 1
+  Y = rep(0, times = m)
+  inds.X = 1:n
+  inds.X = 2*inds.X - 1
+  Y[inds.X] = X
+  for(i in 1:(n-1)){
+    j = 2*i
+    a = Y[j-1]
+    b = Y[j+1]
+    Y[j] = (a+b)/2
+  }
+  return(Y)
+}
