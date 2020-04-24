@@ -49,6 +49,24 @@ prof.lik.ls = function(gamma, X, Y, grad = F) {
   }
 }
 
+### Computes the gradient of the profile likelihood for gamma
+### in an LS model. Redundant, but necessary for "optimx()"
+grad.prof.lik.ls = function(gamma, X, Y){
+  both = prof.lik.ls(gamma, X, Y, grad=T)
+  grad = both[[2]]
+  return(grad)
+}
+
+
+### Finding the root of this function solves 
+### the equation log-lik = val
+lik.root = function(gamma, val, X, Y){
+  this.lik = prof.lik.ls(gamma, X, Y)
+  to.root = this.lik - val
+  return(to.root)
+}
+
+
 ### Computes the BC transformation of Y with the specified gamma,
 ### fits a lasso model and gets the profile likelihood at the
 ### specified lambda(s)

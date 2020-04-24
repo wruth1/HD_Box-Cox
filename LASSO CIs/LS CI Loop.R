@@ -2,6 +2,7 @@ library(glmnet)
 library(doParallel)
 library(pbapply)
 library(stringr)
+library(optimx)
 
 set.seed(51798431)
 
@@ -11,7 +12,6 @@ source("LASSO_Likelihood_Helper_Functions.R")
 
 
 n = 100     #Sample Size
-beta.size = 20
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
 step.sizes = 1:12
@@ -31,7 +31,7 @@ len.G = length(Gammas)
 
 n.folds = 10
 
-sigmas = c(0.1, 0.01)
+sigmas = c(0.1, 1)
 gamma.0s = c(2, 3, 4)
 ps = c(10, 50)#, 200)
 deltas = c(1, 10) #SD of a term in X %*% beta
@@ -75,7 +75,7 @@ M = M.target
 #   source("LASSO_Likelihood_Helper_Functions.R")
 # })
 
-var.names = c("n", "p", "q", "sigma", "gamma.0", "beta.str",
+var.names = c("n", "p", "q", "sigma", "gamma.0", "delta",
               "M", "gamma.step")
 var.names = c(var.names,
               paste0("Minus ", step.sizes))
@@ -92,6 +92,9 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
 
   ### Construct coefficient vector
   q = floor(sqrt(p))
+  beta.size = delta / sqrt(p)
+  beta = c(rep(beta.size, q),
+           rep(0, p-q))
   
 
   

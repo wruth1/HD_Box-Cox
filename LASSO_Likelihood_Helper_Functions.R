@@ -119,7 +119,8 @@ make.data = function(n,
       p = p,
       q = q,
       delta = delta,
-      sigma = sigma
+      sigma = sigma,
+      beta = beta
     )
     output = list(data = all.data, pars = pars)
     return(output)
