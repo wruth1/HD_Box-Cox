@@ -29,12 +29,11 @@ gamma.step = 0.01
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
-n.folds = 10
 
 sigmas = c(0.1, 1)
 gamma.0s = c(2, 3, 4)
 ps = c(10, 50)#, 200)
-deltas = c(1, 10) #SD of a term in X %*% beta
+deltas = c(1, 10) #2-norm of X %*% beta
 
 #Construct list of parameter combinations
 all.pars = expand.grid(
@@ -92,7 +91,7 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
 
   ### Construct coefficient vector
   q = floor(sqrt(p))
-  beta.size = delta / sqrt(p)
+  beta.size = delta / sqrt(q)
   beta = c(rep(beta.size, q),
            rep(0, p-q))
   

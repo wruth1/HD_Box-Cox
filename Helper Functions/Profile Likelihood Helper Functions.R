@@ -1,3 +1,7 @@
+####################
+### LS Functions ###
+####################
+
 ### Compute the profile likelihood for gamma
 ### DO NOT USE OUTSIDE OF OTHER METHODS!!!!!!!!!!!!!!!!!!
 ### Does not adjust Z or Z.hat to match gamma
@@ -30,7 +34,7 @@ grad.prof.lik.formula.ls = function(X, Y, Z, Z.hat, gamma) {
 ### Computes the BC transformation of Y with the specified gamma,
 ### Fits a LS model, then returns the profile likelihood and its
 ### gradient
-prof.lik.ls = function(gamma, X, Y, grad = F) {
+prof.lik.ls = function(gamma, X, Y) {
   Z = BC(Y, gamma)
   data = data.frame(X, Z)
   
@@ -38,41 +42,43 @@ prof.lik.ls = function(gamma, X, Y, grad = F) {
   Z.hat = predict(fit, data.frame(X))
   profile.lik = profile.lik.formula(Y, Z, Z.hat, gamma)
   
-  if (!grad) {
-    return(profile.lik)
-  } else{
-    grad.profile.lik = grad.prof.lik.formula.ls(X, Y, Z, 
-                                                Z.hat, gamma)
-    
-    output = list(lik = profile.lik, grad = grad.profile.lik)
-    return(output)
-  }
+  return(profile.lik)
 }
 
 ### Computes the gradient of the profile likelihood for gamma
 ### in an LS model. Redundant, but necessary for "optimx()"
 grad.prof.lik.ls = function(gamma, X, Y){
-  both = prof.lik.ls(gamma, X, Y, grad=T)
-  grad = both[[2]]
-  return(grad)
+  Z = BC(Y, gamma)
+  data = data.frame(X, Z)
+  fit = lm(Z ~ X, data = data)
+  Z.hat = predict(fit, data.frame(X))
+  grad.profile.lik = grad.prof.lik.formula.ls(X, Y, Z, 
+                                              Z.hat, gamma)
+  return(grad.profile.lik)
 }
 
 
 ### Finding the root of this function solves 
 ### the equation log-lik = val
-lik.root = function(gamma, val, X, Y){
+lik.root.ls = function(gamma, val, X, Y){
   this.lik = prof.lik.ls(gamma, X, Y)
   to.root = this.lik - val
   return(to.root)
 }
 
 
+
+
+
+
+#######################
+### LASSO Functions ###
+#######################
+
 ### Computes the BC transformation of Y with the specified gamma,
 ### fits a lasso model and gets the profile likelihood at the
 ### specified lambda(s)
-### Optionally also computes the gradient of the prof lik 
-### at gamma and returns a list with the lik and the grad
-prof.lik.lasso = function(gamma, X, Y, lambda, grad=F) {
+prof.lik.lasso = function(gamma, X, Y, lambda, penal = F) {
   Z = BC(Y, gamma)
   fit = glmnet(X, Z)
   Z.hat = predict(fit, X, s = lambda)
@@ -83,19 +89,76 @@ prof.lik.lasso = function(gamma, X, Y, lambda, grad=F) {
     return(this.lik)
   })
   
-  if(!grad){
-    return(profile.likelihoods)
-  } else{
-    gradients = sapply(seq_along(lambda), function(i){
-      this.Z.hat = Z.hat[, i]
-      this.grad = grad.prof.lik.formula(Y, Z, this.Z.hat, gamma)
-      return(this.grad)
+  # Subtract L1 penalty from profile likelihood if requested
+  if(penal){
+    beta.hats = predict(fit, type = "coefficients", s = lambda)[-1,]
+    l1.pens = sapply(seq_along(lambda), function(j){
+      this.beta.hat = beta.hats[,j]
+      this.norm = sum(abs(this.beta.hat))
+      this.l = lambda[j]
+      this.pen = this.l * this.norm
+      return(this.pen)
     })
-    output = list(lik = profile.likelihoods,
-                  grad = gradients)
-    return(output)
+    profile.likelihoods = profile.likelihoods - l1.pens
   }
+  
+  return(profile.likelihoods)
+  
+}
+
+### Computes the profile likelihood for gamma, with beta fit using CV lasso
+### penal controls whether the l1 penalty should be added to the likelihood
+prof.lik.CV.lasso = function(gamma, X, Y, penal = F, folds = NULL){
+  Z = BC(Y, gamma)
+  fit = cv.glmnet(X, Z, foldid=folds)
+  Z.hat = predict(fit, X, s = "lambda.1se")
+  
+  lik = profile.lik.formula(Y, Z, Z.hat, gamma)
+  
+  if(penal){
+    l = fit$lambda.1se
+    beta.hat = predict(fit, type = "coefficients", s = "lambda.1se")[-1]
+    l1.pen = l * sum(abs(beta.hat))
+    lik = lik - l1.pen
+  }
+  return(lik)
+}
+
+### Finding the root of this function solves 
+### the equation log-lik = val
+lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL){
+  this.lik = prof.lik.CV.lasso(gamma, X, Y, folds = folds)
+  to.root = this.lik - val
+  return(to.root)
 }
 
 
+### Finding the root of this function solves 
+### the equation log-lik = val
+lik.root.lasso = function(gamma, val, X, Y){
+  this.lik = prof.lik.lasso(gamma, X, Y)
+  to.root = this.lik - val
+  return(to.root)
+}
+
+### Computes the BC transformation of Y with the specified gamma,
+### fits a lasso model and gets the profile likelihood at the
+### specified lambda(s), then subtracts an l1 penalty in each beta
+penal.prof.lik.lasso = function(gamma, X, Y, lambda) {
+  Z = BC(Y, gamma)
+  fit = glmnet(X, Z)
+  Z.hat = predict(fit, X, s = lambda)
+  beta.hat = predict(fit, X, s = lambda, type = "coefficients")
+
+  profile.likelihoods = sapply(seq_along(lambda), function(i) {
+    this.Z.hat = Z.hat[, i]
+    this.beta.hat = beta.hat[-1,i]
+    this.lik = profile.lik.formula(Y, Z, this.Z.hat, gamma)
+    this.penal = lambda[i] * sum(abs(this.beta.hat)) / sd(Z)
+    return(this.lik - this.penal)
+  })
+  
+  return(profile.likelihoods)
+  
+}
 

@@ -19,7 +19,7 @@ my.grad.prof.lik = function(gamma) {
 
 
 ### Optimize the profile likelihood
-test = optimr(par = 2, fn = my.prof.lik, 
+test.ls = optimr(par = 2, fn = my.prof.lik, 
               gr = my.grad.prof.lik,
               method = "BFGS",
               control = list(maximize = T))
@@ -71,15 +71,21 @@ l = fit$lambda.1se
 
 ### Create functions to compute profile likelihood and its grad
 lasso.prof.lik = function(gamma) prof.lik.lasso(gamma, X, Y, l)
-lasso.grad.prof.lik = function(gamma){
-  info = prof.lik.lasso(gamma, X, Y, l, grad=T)
-  this.grad = info$grad
-  return(this.grad)
-}
+lasso.penal.prof.lik = function(gamma) penal.prof.lik.lasso(gamma, X, Y, l)
+
+### Optimize profile likelihood using numerical derivative
+test.lasso = optimize(prof.lik.lasso, c(gamma.min, gamma.max),
+                      maximum = T, X=X, Y=Y, l=l)
+crit = test.lasso$maximum
+test.penal.lasso = optimize(penal.prof.lik.lasso, c(gamma.min, gamma.max),
+                      maximum = T, X=X, Y=Y, l=l)
+crit.penal = test.penal.lasso$maximum
 
 ### Compute profile likelihood and its grad over Gammas
 liks = sapply(Gammas, lasso.prof.lik)
-grads = sapply(Gammas, lasso.grad.prof.lik)
+
+### Compute penalized profile likelihood
+pen.liks = sapply(Gammas, lasso.penal.prof.lik)
 
 ### Compute approximate grad using numerical method
 num.grad = sapply(Gammas, function(g){
@@ -87,13 +93,18 @@ num.grad = sapply(Gammas, function(g){
 })
 
 
-### Compute intermediate quantity for optimization
-crit = Gammas[which.max(liks)]
 
 
 ### Plot profile likelihood with critical value
 plot(Gammas, liks)
 abline(v = crit)
+abline(v = gamma.0, col="red")
+
+### Plot penalized profile likelihood with critical value
+plot(Gammas, pen.liks)
+abline(v = crit.penal)
+abline(v = gamma.0, col="red")
+
 
 ### Plot analytic and numeric gradients of prof lik
 plot(Gammas, grads)

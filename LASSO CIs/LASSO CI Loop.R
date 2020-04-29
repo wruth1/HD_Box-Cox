@@ -63,7 +63,7 @@ nclust = 6
 # 
 # clusterSetRNGStream(cl=cl, iseed = 53567459)
 
-### Number of Ys to generate for each X
+### Number of (X, Y) pairs to generate at each parameter combination
 ### Note: Actual value is the greatest multiple 
 ### of nclust that is less than target
 M = M.target - (M.target %% nclust)

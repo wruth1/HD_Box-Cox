@@ -83,14 +83,14 @@ all.intervals = pblapply(seq_len(M), function(i) {
     if(lik.left > thresh) {
       a = gamma.min
     } else{
-      a = uniroot(lik.root,
+      a = uniroot(lik.root.ls,
                   c(gamma.min, gamma.hat),
                   X = X, Y = Y, val = thresh)$root
     }
     if(lik.right > thresh) {
       b = gamma.max
     } else{
-      b = uniroot(lik.root,
+      b = uniroot(lik.root.ls,
                   c(gamma.hat, gamma.max),
                   X = X, Y = Y, val = thresh)$root
     }
