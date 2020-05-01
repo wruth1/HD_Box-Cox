@@ -11,14 +11,13 @@ source("LASSO_Likelihood_Helper_Functions.R")
 
 
 n = 100     #Sample Size
-beta.size = 20
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
-step.sizes = 1:8
+step.sizes = 1:6
 
 ### Target number of Ys to generate for each X
 ### Actual value is slightly smaller to optimize parallelization
-M.target = 30
+M.target = 6
 
 #Smallest and largest gamma candidates
 gamma.min = 1
@@ -31,11 +30,11 @@ len.G = length(Gammas)
 
 n.folds = 10
 
-sigmas = c(0.1, 0.01)
+sigmas = c(1, 0.1)
 gamma.0s = c(2, 3, 4)
 lambda.types = c("lambda.1se", "lambda.min")
 ps = c(10, 50)#, 200)
-beta.types = c("norm", "val")
+deltas = c(1, 10) # 2-norm of X %*% beta
 
 ### Construct folds ###
 fold.size = n %/% n.folds
@@ -50,18 +49,17 @@ all.pars = expand.grid(
   sigma = sigmas,
   gamma.0 = gamma.0s,
   lambda.type.list = lambda.types,
-  beta.type = beta.types
-)
+  delta = deltas)
 
 # 
 # #Initialize parallelization
 # nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
 # nclust = ifelse(is.na(nclust), detectCores(), nclust)
 nclust = 6
-# cl = makeCluster(nclust)
-# registerDoParallel(cl)
-# 
-# clusterSetRNGStream(cl=cl, iseed = 53567459)
+cl = makeCluster(nclust)
+registerDoParallel(cl)
+
+clusterSetRNGStream(cl=cl, iseed = 53567459)
 
 ### Number of (X, Y) pairs to generate at each parameter combination
 ### Note: Actual value is the greatest multiple 
@@ -70,19 +68,21 @@ M = M.target - (M.target %% nclust)
 
 
 # #Pass info to cluster
-# clusterExport(cl, c("n", "beta.size", "all.pars", "M",
-#                     "Gammas", "folds", "step.sizes"))
-#   # "mu.Y", "X.std", "lambda.type", "n.folds", "folds",
-#   #                   "gamma.0", "n", "Gammas", "sigma", "step.sizes"))
-# clusterEvalQ(cl, {
-#   library(glmnet)
-#   library(pbapply)
-#   source("LASSO_Likelihood_Helper_Functions.R")
-# })
+clusterExport(cl, c("all.pars", "M", "n", "gamma.min", "gamma.max",
+                    "Gammas", "folds", "step.sizes", "gamma.step"))
+
+
+clusterEvalQ(cl, {
+  library(glmnet)
+  library(pbapply)
+  library(optimx)
+  source("LASSO_Likelihood_Helper_Functions.R")
+  source("Helper Functions/Profile Likelihood Helper Functions.R")
+})
 
   
-var.names = c("n", "p", "q", "sigma", "gamma.0", "beta.str",
-              "M", "gamma.step")
+var.names = c("n", "p", "q", "sigma", "gamma.0", "delta",
+              "M", "gamma.step", "step.sizes")
 var.names = c(var.names,
               paste0("Minus ", step.sizes))
 var.names = t(var.names)
@@ -92,6 +92,7 @@ write.table(var.names, "LASSO CIs/Coverages - LASSO.csv",
 
 
 all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
+  print(paste0(j, " of ", nrow(all.pars)))
 # all.cover.probs = pbsapply(1:2, function(j){
   pars = all.pars[j,]
   attach(pars)
@@ -100,8 +101,9 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
   
   ### Construct coefficient vector
   q = floor(sqrt(p))
-  beta = make.beta(p, q, beta.size, type = beta.type)
-  
+  beta.size = delta / sqrt(q) # Value of each non-zero term in beta
+  beta = c(rep(beta.size, times = q),
+           rep(0, times = p-q))
   
   #Run simulation
   source("LASSO CIs/Make One LASSO CI.R",
@@ -111,9 +113,9 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
   
   # output = c(pars, cover.probs)
   # return(output)
-  return(j)
-})#, cl=cl)
+  # return(j)
+}, cl=cl)
 
-# stopCluster(cl)
+stopCluster(cl)
 
 print(Sys.time() - time)

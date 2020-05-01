@@ -14,7 +14,7 @@ set.seed(10782897)
 # source("LASSO_Likelihood_Helper_Functions.R")
 
 
-all.intervals = pblapply(seq_len(M), function(i) {
+all.intervals = lapply(seq_len(M), function(i) {
   ### Generate data
   X = matrix(rnorm(n * p, 0, 1), nrow = n, ncol = p)
   mu.Z.raw = X %*% beta

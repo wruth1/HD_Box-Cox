@@ -1,8 +1,6 @@
 # library(profvis)
 library(optimx)
 
-# prof.file = "RProfile.txt"
-# Rprof(prof.file)
 # 
 # time = Sys.time()
 # 
@@ -20,7 +18,7 @@ set.seed(10782897)
 
 M = 5
 
-all.intervals = pblapply(seq_len(M), function(i) {
+all.intervals = lapply(seq_len(M), function(i) {
   ### Generate data
   X = matrix(rnorm(n * p, 0, 1), nrow = n, ncol = p)
   mu.Z.raw = X %*% beta
@@ -153,19 +151,17 @@ names(info) = paste0("Minus ", step.sizes)
 
 pars = c(n = n, p = p, q = q, sigma = sigma,
          gamma.0 = gamma.0, 
-         beta.str = paste0(beta.type, " = ", beta.size),
+         delta = delta,
          M = M, gamma.step = gamma.step)
 results.raw = c(pars, info)
 results = data.frame(t(results.raw))
 
-write.table(results, "LASSO CIs/Coverages - LASSO.csv", 
-            append = T, row.names = F, quote = F, 
+write.table(results, "LASSO CIs/Coverages - LASSO.csv",
+            append = T, row.names = F, quote = F,
             sep = ",", col.names = F)
 
 # })
 
 # print(Sys.time() - time)
 
-# Rprof(NULL)
-# 
-# summaryRprof(prof.file)
+

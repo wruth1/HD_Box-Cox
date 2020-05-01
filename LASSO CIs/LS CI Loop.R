@@ -33,14 +33,16 @@ len.G = length(Gammas)
 sigmas = c(0.1, 1)
 gamma.0s = c(2, 3, 4)
 ps = c(10, 50)#, 200)
-deltas = c(1, 10) #2-norm of X %*% beta
+deltas = c(1, 10) #SD of X %*% beta
+q.strs = c("sqrt", "full")
 
 #Construct list of parameter combinations
 all.pars = expand.grid(
   p = ps,
   sigma = sigmas,
   gamma.0 = gamma.0s,
-  delta = deltas
+  delta = deltas,
+  q.str = q.strs
 )
 
 
@@ -84,13 +86,16 @@ write.table(var.names, "LASSO CIs/Coverages - LS.csv", append = F,
             col.names = F)
 
 all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
+  # print(j)
   # all.cover.probs = pbsapply(1:2, function(j){
   pars = all.pars[j,]
   attach(pars)
   
 
   ### Construct coefficient vector
-  q = floor(sqrt(p))
+  q = ifelse(q.str == "sqrt", sqrt(p), p)
+  q = floor(q)
+  # q = floor(sqrt(p))
   beta.size = delta / sqrt(q)
   beta = c(rep(beta.size, q),
            rep(0, p-q))
@@ -103,8 +108,8 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
   
   detach(pars)
   
-  output = c(pars, cover.probs)
-  return(output)
+  # output = c(pars, cover.probs)
+  # return(output)
 })#, cl=cl)
 
 # stopCluster(cl)

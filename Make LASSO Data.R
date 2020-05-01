@@ -15,7 +15,7 @@ n = 100     #Sample Size
 beta.size = 20
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
-step.sizes = 1:12
+step.sizes = 1:6
 
 ### Target number of Ys to generate for each X
 ### Actual value is slightly smaller to optimize parallelization
