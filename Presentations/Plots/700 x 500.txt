@@ -1,0 +1,1 @@
+Make plots in RStudio 700 by 500 pixels

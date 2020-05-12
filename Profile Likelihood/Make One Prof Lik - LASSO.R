@@ -1,5 +1,5 @@
 all.lambdas.raw = lapply(Gammas, function(this.gamma) {
-  this.Z = BC(Z, this.gamma)
+  this.Z = BC(Y, this.gamma)
   this.fit = glmnet(X.std, this.Z)
   this.lambdas = this.fit$lambda
   return(this.lambdas)
@@ -8,10 +8,8 @@ all.lambdas.raw = lapply(Gammas, function(this.gamma) {
 all.lambdas = sort(unlist(all.lambdas.raw))
 
 sim.output = lapply(Gammas, function(this.gamma){
-  this.Z = BC(Z, this.gamma)
-  sd.Z = sd(this.Z)
-  this.fit = cv.glmnet(X.std, this.Z, lambda = all.lambdas,
-                       nfolds = n.folds, foldid = folds)
+  this.Z = BC(Y, this.gamma)
+  this.fit = cv.glmnet(X.std, this.Z, lambda = all.lambdas, foldid = folds)
   this.Z.hat = predict(this.fit, X.std, s=lambda.type)
   this.lambda = this.fit[lambda.type]
   # this.data = data.frame(this.Z, X.std)

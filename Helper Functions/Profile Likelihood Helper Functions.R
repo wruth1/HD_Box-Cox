@@ -108,16 +108,18 @@ prof.lik.lasso = function(gamma, X, Y, lambda, penal = F) {
 
 ### Computes the profile likelihood for gamma, with beta fit using CV lasso
 ### penal controls whether the l1 penalty should be added to the likelihood
-prof.lik.CV.lasso = function(gamma, X, Y, penal = F, folds = NULL){
+prof.lik.CV.lasso = function(gamma, X, Y, penal = F, folds = NULL,
+                             lambda.type = "lambda.1se", all.lambdas=NULL){
+  # browser()
   Z = BC(Y, gamma)
-  fit = cv.glmnet(X, Z, foldid=folds)
-  Z.hat = predict(fit, X, s = "lambda.1se")
-  
+  fit = cv.glmnet(X, Z, foldid=folds, lambda = all.lambdas)
+  Z.hat = predict(fit, X, s = lambda.type)
+
   lik = profile.lik.formula(Y, Z, Z.hat, gamma)
   
   if(penal){
     l = fit$lambda.1se
-    beta.hat = predict(fit, type = "coefficients", s = "lambda.1se")[-1]
+    beta.hat = predict(fit, type = "coefficients", s = lambda.type)[-1]
     l1.pen = l * sum(abs(beta.hat))
     lik = lik - l1.pen
   }
@@ -126,8 +128,10 @@ prof.lik.CV.lasso = function(gamma, X, Y, penal = F, folds = NULL){
 
 ### Finding the root of this function solves 
 ### the equation log-lik = val
-lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL){
-  this.lik = prof.lik.CV.lasso(gamma, X, Y, folds = folds)
+lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL, 
+                             lambda.type = "lambda.1se"){
+  this.lik = prof.lik.CV.lasso(gamma, X, Y, folds = folds, 
+                               lambda.type = lambda.type)
   to.root = this.lik - val
   return(to.root)
 }
@@ -135,8 +139,8 @@ lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL){
 
 ### Finding the root of this function solves 
 ### the equation log-lik = val
-lik.root.lasso = function(gamma, val, X, Y){
-  this.lik = prof.lik.lasso(gamma, X, Y)
+lik.root.lasso = function(gamma, val, X, Y, lambda){
+  this.lik = prof.lik.lasso(gamma, X, Y, lambda)
   to.root = this.lik - val
   return(to.root)
 }
