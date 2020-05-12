@@ -58,19 +58,21 @@ CI = c(a,b)
 ### -CI for gamma.0
 
 annot.plot.lik = plot.lik + geom_vline(xintercept = gamma.0, colour = "red", lwd=2) +
-  geom_vline(xintercept = gamma.hat) + geom_vline(xintercept = CI, lty = 2) +
-  ggtitle(plot.title)
+  geom_vline(xintercept = gamma.hat) + geom_vline(xintercept = CI, lty = 2)# +
+  # ggtitle(plot.title)
 plot(annot.plot.lik)
 
-# pres.plot1 = plot.lik + geom_vline(xintercept = gamma.hat)
-# plot(pres.plot1)
-# pres.plot2 = pres.plot1 + geom_hline(yintercept = max.lik, lty = 2)
-# plot(pres.plot2)
-# pres.plot3 = pres.plot1 + geom_hline(yintercept = thresh, lty = 2)
-# plot(pres.plot3)
-# pres.plot4 = pres.plot3 + geom_vline(xintercept = CI, lty=2)
-# plot(pres.plot4)
-# pres.plot5 = pres.plot1 + geom_vline(xintercept = CI, lty=2)
-# plot(pres.plot5)
-# pres.plot6 = pres.plot5 + geom_vline(xintercept = gamma.0, lwd=2, colour = "red")
-# plot(pres.plot6)
+
+plot(plot.lik)
+pres.plot1 = plot.lik + geom_vline(xintercept = gamma.hat)
+plot(pres.plot1)
+pres.plot2 = pres.plot1 + geom_hline(yintercept = max.lik, lty = 2)
+plot(pres.plot2)
+pres.plot3 = pres.plot1 + geom_hline(yintercept = thresh, lty = 2)
+plot(pres.plot3)
+pres.plot4 = pres.plot3 + geom_vline(xintercept = CI, lty=2)
+plot(pres.plot4)
+pres.plot5 = pres.plot1 + geom_vline(xintercept = CI, lty=2)
+plot(pres.plot5)
+pres.plot6 = pres.plot5 + geom_vline(xintercept = gamma.0, lwd=2, colour = "red")
+plot(pres.plot6)

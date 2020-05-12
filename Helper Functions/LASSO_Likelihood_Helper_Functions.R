@@ -167,6 +167,18 @@ coarser.grid = function(X){
   return(Y)
 }
 
+### Apply coarser.grid to fine.grid as many times as possible while keeping
+### n.target elements
+coarsen.grid = function(n.target, fine.grid){
+  N = length(fine.grid)
+  passes = floor(log2(N/n.target))
+  coarse.grid = fine.grid
+  for(j in 1:passes){
+    coarse.grid = coarser.grid(coarse.grid)
+  }
+  return(coarse.grid)
+}
+
 ### Creates a new grid based on X by adding all the midpoints
 finer.grid = function(X){
   n = length(X)

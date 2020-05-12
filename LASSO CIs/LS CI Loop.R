@@ -4,25 +4,25 @@ library(pbapply)
 library(stringr)
 library(optimx)
 
-set.seed(51798431)
+set.seed(41457884)
 
 time = Sys.time()
 
-source("LASSO_Likelihood_Helper_Functions.R")
+source("Helper Functions/All Helper Scripts.R")
 
 
 n = 100     #Sample Size
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
-step.sizes = 1:12
+step.sizes = 2
 
 ### Target number of Ys to generate for each X
 ### Actual value is slightly smaller to optimize parallelization
-M.target = 50
+M.target = 200
 
 #Smallest and largest gamma candidates
-gamma.min = 1
-gamma.max = 5
+gamma.min = -2
+gamma.max = 2
 #Step size for gamma candidates
 gamma.step = 0.01
 #Candidate gamma values
@@ -30,11 +30,13 @@ Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
 
-sigmas = c(0.1, 1)
-gamma.0s = c(2, 3, 4)
+# sigmas = c(0.1, 1)
+sigmas = 1
+gamma.0s = c(0)
 ps = c(10, 50)#, 200)
-deltas = c(1, 10) #SD of X %*% beta
-q.strs = c("sqrt", "full")
+deltas = c(1, 3) #SD of X %*% beta
+# q.strs = c("sqrt", "full")
+q.strs = "sqrt"
 
 #Construct list of parameter combinations
 all.pars = expand.grid(
@@ -95,7 +97,6 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
   ### Construct coefficient vector
   q = ifelse(q.str == "sqrt", sqrt(p), p)
   q = floor(q)
-  # q = floor(sqrt(p))
   beta.size = delta / sqrt(q)
   beta = c(rep(beta.size, q),
            rep(0, p-q))

@@ -14,6 +14,7 @@ source("Helper Functions/Profile Likelihood Helper Functions.R")
 
 
 n = 100     #Sample Size
+n.lambda = 200 # Target number of lambda candidates
 
 ### Amount to decrease likelihood by to construct CI
 CI.step.size = qchisq(0.95, 1)/2
@@ -37,7 +38,7 @@ q.strs = c("sqrt", "full")
 
 
 
-n.lambda.raw = 100
+n.lambda = 200
 n.folds = 10
 
 
@@ -65,7 +66,8 @@ all.pars = expand.grid(
 
 
 
-pbsapply(seq_len(nrow(all.pars)), function(j){
+# pbsapply(seq_len(nrow(all.pars)), function(j){
+j = 5
   # print(paste0(j, " of ", nrow(all.pars)))
   set.seed(32249631)
   
@@ -97,10 +99,24 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   # X.std = scale(X)
   X.std = X
   
+  ### Find all candidate lambda values
+  all.lambdas.raw = sapply(Gammas, function(gamma){
+    this.Z = BC(Y, gamma)
+    this.fit = glmnet(X, this.Z)
+    this.lambdas = this.fit$lambda
+    return(this.lambdas)
+  })
+  all.lambdas.fine = sort(unlist(all.lambdas.raw))
+  
+  ### Make the grid of lambda candidates coarser
+  all.lambdas = coarsen.grid(n.lambda, all.lambdas.fine)
+  
+  
   
   ### Compute profile likelihood sequence
-  prof.lik = sapply(Gammas, function(gamma){
-    this.lik = prof.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds)
+  prof.lik = pbsapply(Gammas, function(gamma){
+    this.lik = prof.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
+                                 all.lambdas = all.lambdas)
     return(this.lik)
   })
   
@@ -117,7 +133,7 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   
   
   
-})
+# })
   
 
 print(Sys.time() - time)
