@@ -9,16 +9,17 @@ library(optimx)
 # library(pbapply)
 # library(stringr)
 
-set.seed(10782897)
+# set.seed(10782897)
 
 
 # source("LASSO_Likelihood_Helper_Functions.R")
 
 # profvis({
 
-M = 5
+# M = 5
 
-all.intervals = lapply(seq_len(M), function(i) {
+
+all.intervals = pblapply(seq_len(M), function(i) {
   ### Generate data
   X = matrix(rnorm(n * p, 0, 1), nrow = n, ncol = p)
   mu.Z.raw = X %*% beta
@@ -34,14 +35,29 @@ all.intervals = lapply(seq_len(M), function(i) {
   # X.std = scale(X)
   X.std = X
   
+  ### Find all candidate lambda values
+  all.lambdas.raw = sapply(Gammas, function(gamma){
+    this.Z = BC(Y, gamma)
+    this.fit = glmnet(X, this.Z)
+    this.lambdas = this.fit$lambda
+    return(this.lambdas)
+  })
+  all.lambdas.fine = sort(unlist(all.lambdas.raw))
+  
+  ### Make the grid of lambda candidates coarser
+  all.lambdas = coarsen.grid(n.lambda, all.lambdas.fine)
+  
+  
   ##############################################################################
   ### Use optimization software to maximize the profile likelihood for gamma ###
   ##############################################################################
   
   opt.lik = optimize(prof.lik.CV.lasso, c(gamma.min, gamma.max),
-                     maximum = T, X=X, Y=Y, folds = folds)
+                     maximum = T, X=X, Y=Y, folds = folds, 
+                     all.lambdas = all.lambdas)
   gamma.hat = opt.lik$maximum
   lik.hat = opt.lik$objective
+  
   
   #####################################################
   ### Compute CIs for several likelihood drop sizes ###
@@ -52,8 +68,10 @@ all.intervals = lapply(seq_len(M), function(i) {
   
   ### Likelihoods at endpoints of candidate range
   ### Used to check if interval extends outside candidate range for gamma
-  lik.left = prof.lik.CV.lasso(gamma.min, X, Y, folds=folds)
-  lik.right = prof.lik.CV.lasso(gamma.max, X, Y, folds=folds)
+  lik.left = prof.lik.CV.lasso(gamma.min, X, Y, folds=folds, 
+                               all.lambdas = all.lambdas)
+  lik.right = prof.lik.CV.lasso(gamma.max, X, Y, folds=folds, 
+                                all.lambdas = all.lambdas)
   
   ### Compute intervals
   ints = lapply(threshs, function(thresh) {
@@ -63,13 +81,15 @@ all.intervals = lapply(seq_len(M), function(i) {
       a = gamma.min
     } else{
       a = uniroot(lik.root.CV.lasso, c(gamma.min, gamma.hat),
-                  X = X, Y = Y, val = thresh, folds=folds)$root
+                  X = X, Y = Y, val = thresh, folds=folds, 
+                  all.lambdas = all.lambdas)$root
     }
     if(lik.right > thresh) {
       b = gamma.max
     } else{
       b = uniroot(lik.root.CV.lasso, c(gamma.hat, gamma.max),
-                  X = X, Y = Y, val = thresh, folds=folds)$root
+                  X = X, Y = Y, val = thresh, folds=folds, 
+                  all.lambdas = all.lambdas)$root
     }
     return(c(a,b))
   })
@@ -88,36 +108,6 @@ all.intervals = lapply(seq_len(M), function(i) {
   
   
   
-  
-  # ########################################################
-  # ### Find likelihood CIs using grid search over gamma ###
-  # ########################################################
-  # 
-  # #Run simulation
-  # source("LASSO CIs/(CI) One Prof Lik - LASSO.R",
-  #        local = T)
-  # 
-  # ### Extract profile likelihood and find maximizer
-  # prof.lik = sapply(sim.output, function(info)
-  #   info[[1]])
-  # opt.lik = max(prof.lik)
-  # 
-  # ### Compute CIs for several likelihood drop sizes
-  # threshs = opt.lik - step.sizes
-  # ints = lapply(threshs, function(l) {
-  #   this.int.inds = which(prof.lik > l)
-  #   this.int = Gammas[this.int.inds]
-  # })
-  # 
-  # ### Check coverage
-  # cover = sapply(ints, function(int) {
-  #   a = min(int)
-  #   b = max(int)
-  #   check = (a <= gamma.0) && (gamma.0 <= b)
-  #   length = b-a
-  #   output = list(check, length)
-  # })
-  
 })
 
 
@@ -125,9 +115,15 @@ all.intervals = lapply(seq_len(M), function(i) {
 all.coverages = sapply(all.intervals, function(info){
   cover.check = info[1,]
 })
-cover.probs = apply(all.coverages, 1, function(checks){
-  return(mean(unlist(checks)))
-})
+
+# Handle the case of a single step.size separately
+if(length(step.sizes == 1)){
+  cover.probs = mean(unlist(all.coverages))
+}else{
+  cover.probs = apply(all.coverages, 1, function(checks) {
+    return(mean(unlist(checks)))
+  })
+}
 # print(paste0("Estimated coverage prob. over ", M, " datasets"))
 # print(cover.probs)
 
@@ -136,9 +132,14 @@ cover.probs = apply(all.coverages, 1, function(checks){
 all.lengths = sapply(all.intervals, function(info){
   lengths = info[2,]
 })
-mean.lengths = apply(all.lengths, 1, function(lengths){
-  return(mean(unlist(lengths)))
-})
+# Handle the case of a single step.size separately
+if(length(step.sizes == 1)){
+  mean.lengths = mean(unlist(all.lengths))
+} else{
+  mean.lengths = apply(all.lengths, 1, function(lengths) {
+    return(mean(unlist(lengths)))
+  })
+}
 
 
 ### Combine coverage probabilities with interval lengths

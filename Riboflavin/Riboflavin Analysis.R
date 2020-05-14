@@ -75,7 +75,7 @@ fit.ls = lm(Y ~ X.hat)
 
 n.folds = 10
 # Target length for all.lambdas
-len.lambda = 200
+n.lambda = 400
 
 ### Construct folds
 n = nrow(data)
@@ -116,11 +116,7 @@ all.lambdas.raw = pbsapply(Gammas, function(gamma){
 all.lambdas.raw = sort(all.lambdas.raw)
 
 ### Coarsify candidate lambda values
-coarseness = floor(log2(length(all.lambdas.raw)/len.lambda)) - 3
-all.lambdas = all.lambdas.raw
-for(j in 1:coarseness){
-  all.lambdas = coarser.grid(all.lambdas)
-}
+all.lambdas = coarsen.grid(n.lambda, all.lambdas.raw)
 
 
 clusterExport(cl, "all.lambdas")
@@ -141,16 +137,62 @@ lik.plot = ggplot(data = data.lik, mapping = aes(x=gamma, y=lik)) +
 # plot(lik.plot)
 
 
-### Maximize LASSO profile likelihood and construct CI
-max.lik = max(prof.lik)
-lasso.mle = Gammas[which.max(prof.lik)]
-inds.int = which(prof.lik >= max.lik - CI.step.size)
-CI = Gammas[inds.int]
-CI.bounds = c(min(CI), max(CI))
+
+
+##############################################################################
+### Use optimization software to maximize the profile likelihood for gamma ###
+##############################################################################
+
+opt.lik = optimize(prof.lik.CV.lasso, c(gamma.min, gamma.max),
+                   maximum = T, X=X, Y=Y, folds = folds, 
+                   all.lambdas = all.lambdas)
+gamma.hat = opt.lik$maximum
+lik.hat = opt.lik$objective
+
+
+##################
+### Compute CI ###
+##################
+
+### Likelihood thresholds for inclusion in CIs
+threshs = lik.hat - CI.step.size
+
+### Likelihoods at endpoints of candidate range
+### Used to check if interval extends outside candidate range for gamma
+lik.left = prof.lik.CV.lasso(gamma.min, X, Y, folds=folds, 
+                             all.lambdas = all.lambdas)
+lik.right = prof.lik.CV.lasso(gamma.max, X, Y, folds=folds, 
+                              all.lambdas = all.lambdas)
+
+### Compute intervals
+ints = lapply(threshs, function(thresh) {
+  ### Check if endpoints are within the range being considered
+  ### If yes, return endpoint. If no, compute endpoint inside interval
+  if(lik.left > thresh) {
+    a = gamma.min
+  } else{
+    a = uniroot(lik.root.CV.lasso, c(gamma.min, gamma.hat),
+                X = X, Y = Y, val = thresh, folds=folds, 
+                all.lambdas = all.lambdas)$root
+  }
+  if(lik.right > thresh) {
+    b = gamma.max
+  } else{
+    b = uniroot(lik.root.CV.lasso, c(gamma.hat, gamma.max),
+                X = X, Y = Y, val = thresh, folds=folds, 
+                all.lambdas = all.lambdas)$root
+  }
+  return(c(a,b))
+})
+
+
+### Process result into CI
+CI = ints[[1]]
 
 
 ### Add CI info to LASSO profile likelihood plot
-lik.CI.plot = lik.plot + geom_vline(xintercept = lasso.mle) +
-  geom_hline(yintercept = max.lik - CI.step.size, lty = 2) +
-  geom_vline(xintercept = CI.bounds, lty = 2)
+lik.CI.plot = lik.plot + geom_vline(xintercept = gamma.hat) +
+  # geom_hline(yintercept = lik.hat - CI.step.size, lty = 2) +
+  geom_vline(xintercept = CI, lty = 2) +
+  ylab('"Profile Likelihood"')
 plot(lik.CI.plot)

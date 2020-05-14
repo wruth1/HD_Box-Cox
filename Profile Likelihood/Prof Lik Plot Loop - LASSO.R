@@ -29,16 +29,20 @@ Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
 
-sigmas = c(0.1, 1)
-gamma.0s = c(0, 1, 2)
+# sigmas = c(0.1, 1)
+sigmas = 1
+# gamma.0s = c(0, 1, 2)
+gamma.0s = 1
 ps = c(10, 50)#, 200)
-deltas = c(1, 3) #SD of X %*% beta
-q.strs = c("sqrt", "full")
+# deltas = c(1, 3) #SD of X %*% beta
+deltas = 3
+# q.strs = c("sqrt", "full")
+q.strs = "sqrt"
 
 
 
 
-n.lambda = 200
+n.lambda = 400
 n.folds = 10
 
 
@@ -66,8 +70,8 @@ all.pars = expand.grid(
 
 
 
-# pbsapply(seq_len(nrow(all.pars)), function(j){
-j = 5
+pbsapply(seq_len(nrow(all.pars)), function(j){
+# j = 5
   # print(paste0(j, " of ", nrow(all.pars)))
   set.seed(32249631)
   
@@ -114,7 +118,7 @@ j = 5
   
   
   ### Compute profile likelihood sequence
-  prof.lik = pbsapply(Gammas, function(gamma){
+  prof.lik = sapply(Gammas, function(gamma){
     this.lik = prof.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
                                  all.lambdas = all.lambdas)
     return(this.lik)
@@ -133,7 +137,7 @@ j = 5
   
   
   
-# })
+})
   
 
 print(Sys.time() - time)

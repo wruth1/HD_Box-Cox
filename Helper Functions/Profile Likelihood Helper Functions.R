@@ -129,9 +129,11 @@ prof.lik.CV.lasso = function(gamma, X, Y, penal = F, folds = NULL,
 ### Finding the root of this function solves 
 ### the equation log-lik = val
 lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL, 
-                             lambda.type = "lambda.1se"){
+                             lambda.type = "lambda.1se",
+                             all.lambdas = NULL){
   this.lik = prof.lik.CV.lasso(gamma, X, Y, folds = folds, 
-                               lambda.type = lambda.type)
+                               lambda.type = lambda.type,
+                               all.lambdas = all.lambdas)
   to.root = this.lik - val
   return(to.root)
 }

@@ -16,6 +16,10 @@ n = 100     #Sample Size
 ### Sizes of steps down from optimizer for profile likelihood CIs
 step.sizes = 2
 
+### Number of times to repeat the entire process
+### These repetitions allow assessment of uncertainty in coverage probs
+B = 5
+
 ### Target number of Ys to generate for each X
 ### Actual value is slightly smaller to optimize parallelization
 M.target = 200
@@ -50,18 +54,18 @@ all.pars = expand.grid(
 
 
 
-# 
+#
 # #Initialize parallelization
 # nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
 # nclust = ifelse(is.na(nclust), detectCores(), nclust)
 # nclust = 6
 # cl = makeCluster(nclust)
 # registerDoParallel(cl)
-# 
+#
 # clusterSetRNGStream(cl=cl, iseed = 53567459)
 
 ### Number of Ys to generate for each X
-### Note: Actual value is the greatest multiple 
+### Note: Actual value is the greatest multiple
 ### of nclust that is less than target
 # M = M.target - (M.target %% nclust)
 M = M.target
@@ -87,31 +91,35 @@ write.table(var.names, "LASSO CIs/Coverages - LS.csv", append = F,
             row.names = F, quote = F, sep = ",",
             col.names = F)
 
-all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
-  # print(j)
-  # all.cover.probs = pbsapply(1:2, function(j){
-  pars = all.pars[j,]
-  attach(pars)
-  
 
-  ### Construct coefficient vector
-  q = ifelse(q.str == "sqrt", sqrt(p), p)
-  q = floor(q)
-  beta.size = delta / sqrt(q)
-  beta = c(rep(beta.size, q),
-           rep(0, p-q))
+pbsapply(seq_len(B), function(k) {
+  sapply(seq_len(nrow(all.pars)), function(j) {
+    # print(j)
+    # all.cover.probs = pbsapply(1:2, function(j){
+    pars = all.pars[j, ]
+    attach(pars)
+    
+    
+    ### Construct coefficient vector
+    q = ifelse(q.str == "sqrt", sqrt(p), p)
+    q = floor(q)
+    beta.size = delta / sqrt(q)
+    beta = c(rep(beta.size, q),
+             rep(0, p - q))
+    
+    
+    
+    #Run simulation
+    source("LASSO CIs/Make One LS CI.R",
+           local = T)
+    
+    detach(pars)
+    
+    # output = c(pars, cover.probs)
+    # return(output)
+  })#, cl=cl)
   
-
-  
-  #Run simulation
-  source("LASSO CIs/Make One LS CI.R",
-         local = T)
-  
-  detach(pars)
-  
-  # output = c(pars, cover.probs)
-  # return(output)
-})#, cl=cl)
+})
 
 # stopCluster(cl)
 

@@ -6,35 +6,40 @@ library(stringr)
 set.seed(41460569)
 
 time = Sys.time()
+print(time)
 
-source("LASSO_Likelihood_Helper_Functions.R")
+source("Helper Functions/All Helper Scripts.R")
 
 
 n = 100     #Sample Size
+n.lambda = 100 #Minimum number of candidate lambdas
 
 ### Sizes of steps down from optimizer for profile likelihood CIs
-step.sizes = 1:6
+step.sizes = 2
 
-### Target number of Ys to generate for each X
-### Actual value is slightly smaller to optimize parallelization
-M.target = 6
+### Number of times to repeat the entire process
+### Allows for assessment of uncertainty in coverage probs
+B = 5
+
+### Number of (X,Y) pairs to generate for each parameter setting
+M = 50
 
 #Smallest and largest gamma candidates
-gamma.min = 1
-gamma.max = 5
+gamma.min = -1
+gamma.max = 3
 #Step size for gamma candidates
-gamma.step = 0.2
+gamma.step = 0.05
 #Candidate gamma values
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
 n.folds = 10
 
-sigmas = c(1, 0.1)
-gamma.0s = c(2, 3, 4)
-lambda.types = c("lambda.1se", "lambda.min")
-ps = c(10, 50)#, 200)
-deltas = c(1, 10) # 2-norm of X %*% beta
+sigmas = c(1)
+gamma.0s = c(0)
+lambda.types = c("lambda.1se")
+ps = c(10, 50, 200)
+deltas = c(1, 3) # 2-norm of X %*% beta
 
 ### Construct folds ###
 fold.size = n %/% n.folds
@@ -55,29 +60,28 @@ all.pars = expand.grid(
 # #Initialize parallelization
 # nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
 # nclust = ifelse(is.na(nclust), detectCores(), nclust)
-nclust = 6
+nclust = min(c(6, B))
 cl = makeCluster(nclust)
 registerDoParallel(cl)
 
-clusterSetRNGStream(cl=cl, iseed = 53567459)
+clusterSetRNGStream(cl=cl, iseed = 43655740)
 
 ### Number of (X, Y) pairs to generate at each parameter combination
 ### Note: Actual value is the greatest multiple 
 ### of nclust that is less than target
-M = M.target - (M.target %% nclust)
 
 
 # #Pass info to cluster
 clusterExport(cl, c("all.pars", "M", "n", "gamma.min", "gamma.max",
-                    "Gammas", "folds", "step.sizes", "gamma.step"))
+                    "Gammas", "folds", "step.sizes", "gamma.step", 
+                    "n.lambda"))
 
 
 clusterEvalQ(cl, {
   library(glmnet)
   library(pbapply)
   library(optimx)
-  source("LASSO_Likelihood_Helper_Functions.R")
-  source("Helper Functions/Profile Likelihood Helper Functions.R")
+  source("Helper Functions/All Helper Scripts.R")
 })
 
   
@@ -91,7 +95,8 @@ write.table(var.names, "LASSO CIs/Coverages - LASSO.csv",
             col.names = F)
 
 
-all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
+parSapply(X = seq_len(B), FUN = function(k){
+sapply(X = seq_len(nrow(all.pars)), FUN = function(j){
   print(paste0(j, " of ", nrow(all.pars)))
 # all.cover.probs = pbsapply(1:2, function(j){
   pars = all.pars[j,]
@@ -114,7 +119,10 @@ all.cover.probs = pbsapply(seq_len(nrow(all.pars)), function(j){
   # output = c(pars, cover.probs)
   # return(output)
   # return(j)
+})
+
 }, cl=cl)
+
 
 stopCluster(cl)
 
