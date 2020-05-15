@@ -195,3 +195,11 @@ finer.grid = function(X){
   }
   return(Y)
 }
+
+### Computes the L1 penalty for lambda and beta
+l1.pen = function(lambda, beta){
+  lambda = unlist(lambda)
+  pen = sum(abs(beta))
+  pen = pen * lambda
+  return(pen)
+}

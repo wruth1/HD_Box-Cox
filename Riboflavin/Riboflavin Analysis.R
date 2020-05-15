@@ -107,7 +107,7 @@ clusterEvalQ(cl, {
 })
 
 ### Extract all candidate lambda values
-all.lambdas.raw = pbsapply(Gammas, function(gamma){
+all.lambdas.raw = sapply(Gammas, function(gamma){
   this.Z = BC(Y, gamma)
   this.fit = glmnet(X, this.Z)
   this.lambdas = this.fit$lambda
@@ -132,8 +132,7 @@ stopCluster(cl)
 ### Plot LASSO profile likelihood
 data.lik = data.frame(gamma = Gammas, lik = prof.lik)
 lik.plot = ggplot(data = data.lik, mapping = aes(x=gamma, y=lik)) +
-  # geom_point()
-  geom_line()
+  geom_line() + ylab('"Profile Likelihood"')
 # plot(lik.plot)
 
 
@@ -191,8 +190,8 @@ CI = ints[[1]]
 
 
 ### Add CI info to LASSO profile likelihood plot
+plot(lik.plot)
 lik.CI.plot = lik.plot + geom_vline(xintercept = gamma.hat) +
   # geom_hline(yintercept = lik.hat - CI.step.size, lty = 2) +
   geom_vline(xintercept = CI, lty = 2) +
-  ylab('"Profile Likelihood"')
 plot(lik.CI.plot)
