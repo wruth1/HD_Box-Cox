@@ -4,16 +4,21 @@ library(pbapply)
 library(stringr)
 library(optimx)
 library(ggplot2)
+library(dplyr)
+library(gtable)
 
 set.seed(43655740)
 
 time = Sys.time()
+print(time)
 
 source("Helper Functions/All Helper Scripts.R")
 
 
 n = 100     #Sample Size
-n.lambda = 400 # Target number of lambda candidates
+n.lambda = 200 # Target number of lambda candidates
+
+lambda.type = "lambda.min"
 
 ### Amount to decrease likelihood by to construct CI
 CI.step.size = qchisq(0.95, 1)/2
@@ -22,7 +27,7 @@ CI.step.size = qchisq(0.95, 1)/2
 gamma.min = -1
 gamma.max = 3
 #Step size for gamma candidates
-gamma.step = 0.01
+gamma.step = 0.02
 #Candidate gamma values
 Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
@@ -38,16 +43,16 @@ deltas = c(1, 3) #SD of X %*% beta
 q.strs = c("sqrt", "full")
 # q.strs = "sqrt"
 
+#CV lambda strategy
+CV.types = c("min", "1se")
 
 
 
-n.folds = 10
 
 
-# lambda.types = c("lambda.1se", "lambda.min")
-lambda.type = "lambda.1se"
 
 ### Construct folds ###
+n.folds = 10
 fold.size = n %/% n.folds
 n.leftover = n %% n.folds
 folds.raw = rep(1:n.folds, times = fold.size)
@@ -62,9 +67,28 @@ all.pars = expand.grid(
   sigma = sigmas,
   gamma.0 = gamma.0s,
   delta = deltas,
-  q.str = q.strs
-  # lambda.type.factor = lambda.types
+  q.str = q.strs,
+  CV.type = CV.types
 )
+
+
+#Initialize parallelization
+nclust = as.numeric(Sys.getenv("SLURM_NTASKS"))
+nclust = ifelse(is.na(nclust), detectCores(), nclust)
+cl = makeCluster(nclust)
+registerDoParallel(cl)
+
+
+#Pass info to cluster
+clusterExport(cl, c("all.pars", "lambda.type", "n", "n.lambda", "folds",
+                     "CI.step.size", "Gammas", "gamma.min", "gamma.max"))
+clusterEvalQ(cl, {
+  source("Helper Functions/All Helper Scripts.R")
+  library(glmnet)
+  library(ggplot2)
+  library(dplyr)
+  library(gtable)
+})
 
 
 
@@ -75,7 +99,8 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   
   pars = all.pars[j,]
   attach(pars)
-  # lambda.type.factor = as.character(lambda.type.fact)
+  
+  lambda.type = paste0("lambda.", CV.type)
   
   ### Construct coefficient vector
   q = ifelse(q.str == "sqrt", sqrt(p), p)
@@ -96,11 +121,6 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   ### Transform Y so that gamma.0 is correct BC parameter
   Y = inv.BC(Z, gamma.0)
   
-  ### Find lambda values to use for all datasets
-  ### Note: lambda is chosen as a proportion of max(beta.hat.ls)
-  # X.std = scale(X)
-  X.std = X
-  
   ### Find all candidate lambda values
   all.lambdas.raw = sapply(Gammas, function(gamma){
     this.Z = BC(Y, gamma)
@@ -115,27 +135,49 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   
   
   
-  ### Compute profile likelihood sequence
-  prof.lik = pbsapply(Gammas, function(gamma){
+  ### Compute discretized profile penalized likelihood and active sets
+  pen.analysis = lapply(Gammas, function(gamma){
     this.lik = pen.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
-                                 all.lambdas = all.lambdas)
+                                 all.lambdas = all.lambdas, details=T,
+                                lambda.type = lambda.type)
+    return(this.lik)
+  })
+  
+  ### Extract profile penalized likelihood and other details
+  pen.prof.lik = sapply(pen.analysis, function(info) info[[1]])
+  pen.active.sets = lapply(pen.analysis, function(info) info[[2]])
+  pen.active.sizes = sapply(pen.analysis, function(info) {
+    length(unlist(info[[2]]))
+  })
+  pen.lambda.hat = unlist(sapply(pen.analysis, function(info) info[[3]]))
+  pen.b.norm = sapply(pen.analysis, function(info) info[[4]])
+  
+  ### Compute unpenalized profile likelihood
+  prof.lik = sapply(Gammas, function(gamma){
+    this.lik = prof.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
+                                all.lambdas = all.lambdas,
+                                lambda.type = lambda.type)
     return(this.lik)
   })
   
   
+  ### Store all simulation output in a data frame
+  results = data.frame(lik.raw = prof.lik, lik = pen.prof.lik,
+                       act = pen.active.sizes, gamma = Gammas,
+                       l.hat = pen.lambda.hat, b.norm = pen.b.norm)
+  
   #Create name for plots and files
-  pars[5] = as.character(q.str)
+  pars["q.str"] = as.character(q.str)
+  pars["CV.type"] = as.character(CV.type)
   var.vals = paste0(names(pars),"=", pars)
   plot.title = paste0(var.vals, collapse = ", ")
   plot.title = paste0("j = ", j, ", ", plot.title)
   
-  source("Penalized Likelihood/Plot One Penal Lik.R", local=T)
+  source("Penalized Likelihood/Plot One Pen Lik Decomp.R", local=T)
   
   detach(pars)
-  
-  
-  
-})
-  
+}, cl=cl)
+
+stopCluster(cl)  
 
 print(Sys.time() - time)

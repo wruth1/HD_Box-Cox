@@ -144,7 +144,7 @@ lik.root.lasso = function(gamma, val, X, Y, lambda){
 
 ### Computes the penalized profile likelihood for gamma, with beta fit using CV lasso
 ### penal controls whether the l1 penalty should be added to the likelihood
-pen.lik.CV.lasso = function(gamma, X, Y, folds = NULL,
+pen.lik.CV.lasso = function(gamma, X, Y, folds = NULL, details = F,
                              lambda.type = "lambda.1se", all.lambdas=NULL){
   # browser()
   Z = BC(Y, gamma)
@@ -157,7 +157,11 @@ pen.lik.CV.lasso = function(gamma, X, Y, folds = NULL,
   
   lik = pen.lik.formula(Y, Z, Z.hat, gamma, penalty)
   
-  
+  if(details){
+    active = predict(fit, s=lambda.type, type="nonzero")
+    output = list(lik, active, l, sum(abs(b)))
+    return(output)
+  }
   return(lik)
 }
 
@@ -166,7 +170,7 @@ pen.lik.CV.lasso = function(gamma, X, Y, folds = NULL,
 pen.lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL, 
                              lambda.type = "lambda.1se",
                              all.lambdas = NULL){
-  this.lik = prof.lik.CV.lasso(gamma, X, Y, folds = folds, 
+  this.lik = pen.lik.CV.lasso(gamma, X, Y, folds = folds, 
                                lambda.type = lambda.type,
                                all.lambdas = all.lambdas)
   to.root = this.lik - val

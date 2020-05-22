@@ -18,12 +18,10 @@ Y.test = Y[-inds.train]
 ### Fit LASSO to training set, extract knots ###
 ################################################
 
-gamma = 0
-
 ### Fit model
-Z.train = BC(Y.train, gamma)
+Z.train = BC(Y.train, gamma.hat)
 fit.lars = lars(X.train, Z.train)
-cv.lars(X.train, Z.train)
+# cv.lars(X.train, Z.train)
 
 ### Get knots as proportions of largest lambda
 knot.props = fit.lars$lambda
@@ -37,20 +35,20 @@ knot.props = fit.lars$lambda
 ###############################################
 
 ### Fit model and extract lambdas
-fit0 = glmnet(X.train, Z.train)
-lambdas.raw = fit$lambda
-knots = max(lambdas.raw)*knot.props
+fit = glmnet(X.train, Z.train)
+this.lambdas = fit$lambda
+knots = max(this.lambdas)*knot.props
 
-### Add more lambda candidates around optimizer and re-fit model
-new.lambdas = seq(0.005, 0.015, by = 0.0002)
-lambdas = c(lambdas.raw, new.lambdas)
-lambdas = sort(lambdas, decreasing=T)
-fit = glmnet(X.train, Z.train, lambda = lambdas)
+# ### Add more lambda candidates around optimizer and re-fit model
+# new.lambdas = seq(0.005, 0.015, by = 0.0002)
+# lambdas = c(lambdas.raw, new.lambdas)
+# lambdas = sort(lambdas, decreasing=T)
+# fit = glmnet(X.train, Z.train, lambda = lambdas)
 
 ### Compute prediction errors for all lambda values on the Y-scale
 preds = predict(fit, X.test)
 errs = apply(preds, 2, function(Z.hat){
-  Y.hat = inv.BC(Z.hat, gamma)
+  Y.hat = inv.BC(Z.hat, gamma.hat)
   err = mean((Y.test - Y.hat)^2)
   return(err)
 })
@@ -60,9 +58,9 @@ errs = apply(preds, 2, function(Z.hat){
 ### Plot MSPE as function of lambda, with knots ###
 ###################################################
 
-plot.MSPE = ggplot(mapping = aes(x=lambdas, y=errs)) + geom_line() +
+plot.MSPE = ggplot(mapping = aes(x=this.lambdas, y=errs)) + geom_line() +
   geom_vline(xintercept = knots, lty=2) +
-  xlim(0.005, 0.015) + ylim(1, 1.3) +
+  # xlim(0.005, 0.015) + ylim(1, 1.3) +
   geom_rug(sides = "b")
 plot(plot.MSPE)
 

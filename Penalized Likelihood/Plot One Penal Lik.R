@@ -1,34 +1,27 @@
 ##################################################
-### Run this after "Make One Prof Lik - LS.R"  ###
 ### Plots the (discretized) profile likelihood ###
 ##################################################
 
 
 
-results = data.frame(lik = prof.lik,
-                     gamma = Gammas)
-
-### See code at bottom of script to plot
-plot.lik = ggplot(data = results, mapping = aes(x = gamma, y = lik)) +
-  geom_line() + xlab("gamma") + ylab("Profile Likelihood")
-
-
-
 ### Find optimizer of profile likelihood
 opt.lik = optimize(pen.lik.CV.lasso, c(gamma.min, gamma.max), X=X, Y=Y,
-                   all.lambdas = all.lambdas,
-                   folds = folds, lambda.type = lambda.type, maximum = T)
+                   all.lambdas = all.lambdas, folds = folds, 
+                   lambda.type = lambda.type, maximum = T)
 print(opt.lik)
 gamma.hat = opt.lik$maximum
+
 
 
 ### Find stepdown CI for gamma ###
 max.lik = opt.lik$objective
 thresh = max.lik - CI.step.size
 lik.left = pen.lik.CV.lasso(gamma.min, X, Y, folds = folds, 
-                             lambda.type = lambda.type)
+                             lambda.type = lambda.type, 
+                            all.lambdas = all.lambdas)
 lik.right = pen.lik.CV.lasso(gamma.max, X, Y, folds = folds, 
-                              lambda.type = lambda.type)
+                              lambda.type = lambda.type, 
+                             all.lambdas = all.lambdas)
 if(lik.left > thresh) {
   # Interval extends below candidate region
   warning(paste0("Confidence interval extends below candidate region for gamma",
@@ -38,7 +31,8 @@ if(lik.left > thresh) {
   # Find left endpoint of interval inside candidate region
   a = uniroot(pen.lik.root.CV.lasso,
               c(gamma.min, gamma.hat), X = X, Y = Y, folds=folds,
-               val = thresh, lambda.type = lambda.type)$root
+               val = thresh, lambda.type = lambda.type, 
+              all.lambdas = all.lambdas)$root
 }
 if(lik.right > thresh) {
   # Interval extends above candidate region
@@ -49,10 +43,12 @@ if(lik.right > thresh) {
   # Find right endpoint of interval inside candidate region
   b = uniroot(pen.lik.root.CV.lasso,
               c(gamma.hat, gamma.max), X = X, Y = Y, folds=folds,
-              val = thresh, lambda.type = lambda.type)$root
+              val = thresh, lambda.type = lambda.type, 
+              all.lambdas = all.lambdas)$root
 }
 CI = c(a,b)
 
+pen.lik.CV.lasso(b, X, Y, folds, all.lambdas = all.lambdas)
 
 ### Annotate profile likelihood plot with:
 ### -gamma.0

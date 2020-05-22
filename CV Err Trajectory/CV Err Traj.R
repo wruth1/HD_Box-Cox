@@ -5,6 +5,7 @@ library(stringr)
 library(optimx)
 library(ggplot2)
 library(dplyr)
+library(lars)
 
 set.seed(37280337)
 
@@ -27,26 +28,24 @@ Gammas = seq(gamma.min, gamma.max, gamma.step)
 len.G = length(Gammas)
 
 
-# sigmas = c(0.1, 1)
-sigmas = 1
+sigmas = c(0.1, 1)
+# sigmas = 1
 gamma.0s = c(1, 2)
 # gamma.0s = 1
 gamma.hats = c(1, 2)
-# ps = c(10, 50, 200)
-ps = 50
-# deltas = c(1, 3) #SD of X %*% beta
-deltas = 3
-# q.strs = c("sqrt", "full")
-q.strs = "sqrt"
+ps = c(10, 50, 200)
+# ps = 50
+deltas = c(1, 3) #SD of X %*% beta
+# deltas = 3
+q.strs = c("sqrt", "full")
+# q.strs = "sqrt"
 
-
+#CV lambda strategy
+CV.types = c("min", "1se")
 
 
 n.folds = 10
 
-
-# lambda.types = c("lambda.1se", "lambda.min")
-lambda.type = "lambda.1se"
 
 ### Construct folds ###
 fold.size = n %/% n.folds
@@ -64,8 +63,8 @@ all.pars = expand.grid(
   gamma.0 = gamma.0s,
   gamma.hat = gamma.hats,
   delta = deltas,
-  q.str = q.strs
-  # lambda.type.factor = lambda.types
+  q.str = q.strs,
+  CV.type = CV.types
 )
 
 
@@ -77,7 +76,8 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   
   pars = all.pars[j,]
   attach(pars)
-  # lambda.type.factor = as.character(lambda.type.fact)
+
+  lambda.type = paste0("lambda.", CV.type)
   
   ### Construct coefficient vector
   q = ifelse(q.str == "sqrt", sqrt(p), p)
@@ -99,42 +99,48 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   Y = inv.BC(Z, gamma.0)
   
   
-  ### Find all candidate lambda values
-  all.lambdas.raw = sapply(Gammas, function(gamma){
-    this.Z = BC(Y, gamma)
-    this.fit = glmnet(X, this.Z)
-    this.lambdas = this.fit$lambda
-    return(this.lambdas)
-  })
-  all.lambdas.fine = sort(unlist(all.lambdas.raw))
-  
-  ### Make the grid of lambda candidates coarser
-  all.lambdas = coarsen.grid(n.lambda, all.lambdas.fine)
-  
-  
-  
-  ### Compute CV error for each lambda value
-  all.CV.errs = sapply(all.lambdas, function(l){
-    
-  })
-  
-  
-  
-  ### Compute profile likelihood sequence
-  prof.lik = pbsapply(Gammas, function(gamma){
-    this.lik = pen.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
-                                all.lambdas = all.lambdas)
-    return(this.lik)
-  })
+  # ### Find all candidate lambda values
+  # all.lambdas.raw = sapply(Gammas, function(gamma){
+  #   this.Z = BC(Y, gamma)
+  #   this.fit = glmnet(X, this.Z)
+  #   this.lambdas = this.fit$lambda
+  #   return(this.lambdas)
+  # })
+  # all.lambdas.fine = sort(unlist(all.lambdas.raw))
+  # 
+  # ### Make the grid of lambda candidates coarser
+  # all.lambdas = coarsen.grid(n.lambda, all.lambdas.fine)
+  # 
+  # 
+  # 
+  # ### Compute CV error for each lambda value
+  # all.CV.errs = sapply(all.lambdas, function(l){
+  #   
+  # })
+  # 
+  # 
+  # 
+  # ### Compute profile likelihood sequence
+  # prof.lik = pbsapply(Gammas, function(gamma){
+  #   this.lik = pen.lik.CV.lasso(gamma=gamma, X=X, Y=Y, folds=folds,
+  #                               all.lambdas = all.lambdas)
+  #   return(this.lik)
+  # })
   
   
   #Create name for plots and files
-  pars[5] = as.character(q.str)
+  pars["q.str"] = as.character(q.str)
+  pars["CV.type"] = as.character(CV.type)
   var.vals = paste0(names(pars),"=", pars)
   plot.title = paste0(var.vals, collapse = ", ")
   plot.title = paste0("j = ", j, ", ", plot.title)
   
-  source("Penalized Likelihood/Plot One Penal Lik.R", local=T)
+  file.name = paste0("Plots/CV Lambda Traj/", CV.type, "/", plot.title, ".jpg")
+  jpeg(file.name)
+  cv.lars(X, Y, se=F)
+  dev.off()
+  
+  
   
   detach(pars)
   
