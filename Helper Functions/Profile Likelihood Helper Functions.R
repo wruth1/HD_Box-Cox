@@ -153,13 +153,13 @@ pen.lik.CV.lasso = function(gamma, X, Y, folds = NULL, details = F,
   b = coef(fit, s=lambda.type)
   Z.hat = predict(fit, X, s = lambda.type)
   
-  penalty = l1.pen(l, b)
+  penalty = l1.pen(l, b[-1])
   
   lik = pen.lik.formula(Y, Z, Z.hat, gamma, penalty)
   
   if(details){
     active = predict(fit, s=lambda.type, type="nonzero")
-    output = list(lik, active, l, sum(abs(b)))
+    output = list(lik, active, l, sum(abs(b[-1])))
     return(output)
   }
   return(lik)
@@ -176,3 +176,30 @@ pen.lik.root.CV.lasso = function(gamma, val, X, Y, folds = NULL,
   to.root = this.lik - val
   return(to.root)
 }
+
+
+### Computes the penalized profile likelihood for gamma, 
+### with beta fit using lasso at the specified lambda value
+### Note: By default, the specified lambda is used for the inner loop. 
+###       This is controlled by which.lambda
+### exact controls whether glmnet should be re-fit with the specified lambda
+pen.lik.lasso = function(gamma, X, Y, lambda, which.lambda = "inner",
+                         details = F, all.lambdas=NULL, exact = F){
+  # browser()
+  Z = BC(Y, gamma)
+  fit = glmnet(X, Z, lambda = all.lambdas)
+  b = coef(fit, s=lambda, exact = exact, x=X, y=Z)
+  Z.hat = predict(fit, X, s = lambda, exact = exact, x=X, y=Z)
+  
+  penalty = l1.pen(lambda, b)
+  
+  lik = pen.lik.formula(Y, Z, Z.hat, gamma, penalty)
+  
+  if(details){
+    active = predict(fit, s=lambda, type="nonzero", exact, x=X, y=Z)
+    output = list(lik, active, l, sum(abs(b)))
+    return(output)
+  }
+  return(lik)
+}
+

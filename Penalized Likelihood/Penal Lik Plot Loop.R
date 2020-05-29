@@ -2,7 +2,7 @@ library(glmnet)
 library(doParallel)
 library(pbapply)
 library(stringr)
-library(optimx)
+# library(optimx)
 library(ggplot2)
 library(dplyr)
 library(gtable)
@@ -23,14 +23,13 @@ lambda.type = "lambda.min"
 ### Amount to decrease likelihood by to construct CI
 CI.step.size = qchisq(0.95, 1)/2
 
-#Smallest and largest gamma candidates
-gamma.min = -1
-gamma.max = 3
+
 #Step size for gamma candidates
-gamma.step = 0.02
-#Candidate gamma values
-Gammas = seq(gamma.min, gamma.max, gamma.step)
-len.G = length(Gammas)
+gamma.grid.step = 0.01
+#Maximum increase and decrease from gamma.0
+gamma.step.up = 1
+gamma.step.down = 1
+
 
 
 sigmas = c(0.1, 1)
@@ -81,7 +80,8 @@ registerDoParallel(cl)
 
 #Pass info to cluster
 clusterExport(cl, c("all.pars", "lambda.type", "n", "n.lambda", "folds",
-                     "CI.step.size", "Gammas", "gamma.min", "gamma.max"))
+                     "CI.step.size", "gamma.grid.step",
+                    "gamma.step.down", "gamma.step.up"))
 clusterEvalQ(cl, {
   source("Helper Functions/All Helper Scripts.R")
   library(glmnet)
@@ -93,12 +93,18 @@ clusterEvalQ(cl, {
 
 
 pbsapply(seq_len(nrow(all.pars)), function(j){
-# j = 5
+  # j = 5
   # print(paste0(j, " of ", nrow(all.pars)))
   set.seed(32249631)
   
   pars = all.pars[j,]
   attach(pars)
+  
+  #Smallest and largest gamma candidates
+  gamma.min = gamma.0 - gamma.step.down
+  gamma.max = gamma.0 + gamma.step.up
+  #Candidate gamma values
+  Gammas = seq(gamma.min, gamma.max, gamma.grid.step)
   
   lambda.type = paste0("lambda.", CV.type)
   
@@ -118,7 +124,7 @@ pbsapply(seq_len(nrow(all.pars)), function(j){
   mu.Z = mu.Z.raw + get.int(n, delta, sigma)
   Z = mu.Z + rnorm(n, 0, sigma)
   
-  ### Transform Y so that gamma.0 is correct BC parameter
+  ### Transform Z so that gamma.0 is correct BC parameter
   Y = inv.BC(Z, gamma.0)
   
   ### Find all candidate lambda values
