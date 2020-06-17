@@ -31,7 +31,7 @@ plot.l.hat = ggplot(data = results, aes(x=gamma, y=log(l.hat))) +
 
 ### Plot log L1 norm of beta hat
 plot.norm.b = ggplot(data = results, aes(x=gamma, y=b.norm)) +
-  geom_point(size = 0.5) + xlab("gamma") + ylab("log(L1 Norm)") +
+  geom_point(size = 0.5) + xlab("gamma") + ylab("L1 Norm") +
   geom_vline(xintercept = gamma.0, lty = 2)
 # plot(plot.norm.b)
 
